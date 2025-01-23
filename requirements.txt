@@ -1,2 +1,5 @@
-pygame
+pillow
+requests
+tk
+tcl
 customtkinter

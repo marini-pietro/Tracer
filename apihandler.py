@@ -1,4 +1,10 @@
-import requests
+try:
+    import requests
+except ImportError:
+    import os
+    os.system("pip install requests")
+    del os
+    import requests
 
 BASE_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php?"
 
