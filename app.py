@@ -38,14 +38,21 @@ class App(CTk.CTk):
             self.root.iconbitmap("./img/icon.ico")
 
         # Initial menu window
-
-        # Load the program logo
-        main_logo_label: CTk.CTkLabel = self.load_img("./img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2-100), anchor="center")
+        self.main_logo_label: CTk.CTkLabel = self.load_img("./img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2-100), anchor="center") # Load the main logo
+        self.new_sheet_button: CTk.CTkButton = CTk.CTkButton(self.root, text="New Sheet", command=self.create_new_sheet(), width=20) # Create the new sheet button
 
         # Load new file button
 
     def show_window(self):
         self.root.mainloop() # Start the main loop
+
+    def create_new_sheet(self):
+        """
+        Creates a new sheet in the window.
+
+        """
+
+        ydk_handler.read_ydk()
 
     def load_img(self, img_path: str, img_position: tuple[int, int], img_size: tuple[int, int] = None, label_text: str = '', anchor: str = 'topleft') -> CTk.CTkLabel:
         """
