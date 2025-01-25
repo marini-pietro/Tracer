@@ -1,18 +1,25 @@
+import sys
+import os
+
+# Add the CTkColorPicker module path to sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'CTkColorPicker'))
+
 try:
-    import os
     import customtkinter as CTk
     from PIL import Image
     from apihandler import APIHandler
     from ydkhandler import YDKHandler
     from config import * # Import everything from config.py without having to name it every time
+    from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
+
 except ImportError as e:
-    import os 
     os.system("pip install -r requirements.txt") # Install the required packages
     import customtkinter as CTk
     from PIL import Image
     from apihandler import APIHandler
     from ydkhandler import YDKHandler
     from config import * # Import everything from config.py without having to name it every time
+    from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
 
 # Initialize constants
 resolution_split: list[str] = WINDOW_RESOLUTION.split("x")
@@ -25,7 +32,7 @@ ydk_handler = YDKHandler()
 class App(CTk.CTk):
     def __init__(self):
         # Initialize the main window
-        CTk.set_appearance_mode("dark") # Force appearance mode to dark
+        CTk.set_appearance_mode("system")
         self.root = CTk.CTk() # Create the main window class
         self.root.geometry(WINDOW_RESOLUTION) # Set the window resolution
         self.root.resizable(False, False) # Disable window resizing
@@ -38,23 +45,56 @@ class App(CTk.CTk):
             self.root.iconbitmap("./img/icon.ico")
 
         # Initial menu window
-        self.main_logo_label: CTk.CTkLabel = self.load_img("./img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2-100), anchor="center") # Load the main logo
-        self.new_sheet_button: CTk.CTkButton = CTk.CTkButton(self.root, text="New Sheet", command=self.create_new_sheet(), width=20) # Create the new sheet button
+        self.main_logo_label: CTk.CTkLabel = self.create_img("./img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2-150), anchor="center") # Load the main logo
+        self.new_sheet_button: CTk.CTkButton = self.create_button("New Sheet", button_position=(WINDOW_WIDTH//2-50, WINDOW_HEIGHT//2+50), button_size=(100, 50), 
+                          command=lambda: self.create_new_sheet(pos=(WINDOW_WIDTH//2 - (WINDOW_WIDTH*0.9)//2, WINDOW_HEIGHT//2 - (WINDOW_HEIGHT*0.9)//2), size=(WINDOW_WIDTH*0.9, WINDOW_HEIGHT*0.9)), button_color='light blue', text_color='white', corner_radius=10, hover=True) # Create the new sheet button
 
         # Load new file button
 
     def show_window(self):
         self.root.mainloop() # Start the main loop
 
-    def create_new_sheet(self):
+    def create_new_sheet(self, pos: tuple[int, int] = (0, 0), size: tuple[int, int] = (100, 100)):
         """
         Creates a new sheet in the window.
 
         """
 
-        ydk_handler.read_ydk()
+        # Create a new window
+        new_window = CTk.CTkFrame(self.root, width=size[0], height=size[1]) # Create a new window frame
+        new_window.place(x=pos[0], y=pos[1]) # Pack the new window frame to make it visible
 
-    def load_img(self, img_path: str, img_position: tuple[int, int], img_size: tuple[int, int] = None, label_text: str = '', anchor: str = 'topleft') -> CTk.CTkLabel:
+        # Create a label and entry for text input
+        label = CTk.CTkLabel(new_window, text="Enter name of combo sheet:", width=size[0]*0.8, height=30)
+        label.place(x=size[0]//2-label.winfo_reqwidth()//2, y=10)
+        entry = CTk.CTkEntry(new_window, width=size[0]*0.8, height=50)
+        entry.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=60)
+
+        # Create switches
+        switch1 = CTk.CTkSwitch(new_window, text="Import cards from YDK file.")
+        switch1.place(x=size[0]//2-switch1.winfo_reqwidth()//2, y=120)
+        switch2 = CTk.CTkSwitch(new_window, text="Option 2")
+        switch2.place(x=size[0]//2-switch2.winfo_reqwidth()//2, y=170)
+
+        #Create color picker
+        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff")
+        color_picker.place(x=size[0]//2-color_picker.winfo_reqwidth()//2, y=220)
+
+        # Create a button to submit the input
+        submit_button = CTk.CTkButton(new_window, text="Submit", command=lambda: self.process_new_sheet_input(entry.get(), switch1.get(), switch2.get(), color_picker.get()))
+        submit_button.place(x=size[0]//2-submit_button.winfo_reqwidth()//2, y=size[1]-submit_button.winfo_reqheight()-10) # Place the button at the bottom center of the window
+
+    def process_new_sheet_input(self, text: str, switch1_state, switch2_state, color: str):
+        """
+        Process the input from the new sheet settings window.
+        Args:
+            text (str): The text input.
+            switch1_state (bool): The state of switch 1.
+            switch2_state (bool): The state of switch 2.
+        """
+        print(f"Text: {text}, Switch 1: {switch1_state}, Switch 2: {switch2_state} Color: {color}")
+
+    def create_img(self, img_path: str, img_position: tuple[int, int], img_size: tuple[int, int] = None, label_text: str = '', anchor: str = 'topleft') -> CTk.CTkLabel:
         """
         Loads an places image into the window with the given path, position and size.
 
@@ -99,6 +139,37 @@ class App(CTk.CTk):
                 ctk_label.place(x=img_position[0], y=img_position[1]-img_size[1])
         return ctk_label
     
+    def create_button(self, text: str, button_position: tuple[int, int], button_size: tuple[int, int], command: callable, button_color: str = "blue", text_color: str = "white", corner_radius: int = 90, hover: bool = True, hover_color: tuple[int, int, int] = [255, 255, 255]) -> CTk.CTkButton:
+        """
+        Creates a button in the window with the given text, position, size and command.
+
+        Args:
+            text (str): The text to display on the button.
+            button_position (tuple[int, int]): The position to place the button.
+            button_size (tuple[int, int]): The size of the button.
+            command (callable): The function to run when the button is clicked.
+            button_color (str, optional): The color of the button. Defaults to "blue".
+            text_color (str, optional): The color of the text. Defaults to "white".
+            corner_radius (int, optional): The corner radius of the button. Defaults to 90.
+            hover (bool, optional): If the button should change color on hover. Defaults to True.
+        
+        Returns:
+            CTk.CTkButton: The button object.
+        
+        Raises:
+            ValueError: If the button position or button size tuples are invalid.
+        """
+
+        # Check if the arguments are valid
+        if len(button_position) != 2: raise ValueError("Button position must be a tuple with 2 integers.") # Check if the button position is valid
+        if (button_position[0] <= 0 or button_position[1] <= 0): raise ValueError("Button position must be greater than 0.")
+        if len(button_size) != 2: raise ValueError("Button size must be a tuple with 2 integers.")
+        if (button_size[0] <= 0 or button_size[1] <= 0): raise ValueError("Button size must be greater than 0.")
+
+        button = CTk.CTkButton(self.root, text=text, command=command, fg_color=button_color, text_color=text_color, width=button_size[0], height=button_size[1], hover=hover, corner_radius=corner_radius) # Create the button object
+        button.place(x=button_position[0], y=button_position[1]) # Set the button position and size
+        return button
+
 if __name__ == "__main__":
     app = App()
     app.show_window() # Start the main window
