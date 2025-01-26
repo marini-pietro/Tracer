@@ -1,43 +1,52 @@
-import sys
-import os
-
-# Add the CTkColorPicker module path to sys.path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'CTkColorPicker'))
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'CTkColorPicker')) # Add the CTkColorPicker module path to sys.path
+del sys
 
 try:
     import customtkinter as CTk
+    from tkinter import filedialog
     from PIL import Image
     from apihandler import APIHandler
     from ydkhandler import YDKHandler
     from config import * # Import everything from config.py without having to name it every time
     from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
+    import ctypes
+    ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
+    del ctypes
 
 except ImportError as e:
     os.system("pip install -r requirements.txt") # Install the required packages
     import customtkinter as CTk
+    from tkinter import filedialog
     from PIL import Image
     from apihandler import APIHandler
     from ydkhandler import YDKHandler
     from config import * # Import everything from config.py without having to name it every time
     from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
+    import ctypes
+    ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
+    del ctypes
+
 
 # Initialize constants
 resolution_split: list[str] = WINDOW_RESOLUTION.split("x")
 WINDOW_WIDTH, WINDOW_HEIGHT = int(resolution_split[0]),int(resolution_split[1])
 
-# Initialize the APIHandler and YDKHandler classes
-api_handler = APIHandler()
-ydk_handler = YDKHandler()
-
 class App(CTk.CTk):
     def __init__(self):
         # Initialize the main window
-        CTk.set_appearance_mode("system")
+        CTk.set_appearance_mode(APPEARENCE_MODE) # Set the appearance mode
         self.root = CTk.CTk() # Create the main window class
         self.root.geometry(WINDOW_RESOLUTION) # Set the window resolution
         self.root.resizable(False, False) # Disable window resizing
         self.root.grid_columnconfigure(0, weight=1) # Set the column to expand with the window
         self.root.grid_rowconfigure(0, weight=1) # Set the row to expand with the window
+
+        # Initialize the APIHandler and YDKHandler classes
+        self.api_handler = APIHandler()
+        self.ydk_handler = YDKHandler(self.api_handler)
 
         # Set centered window title and icon
         self.root.title("Tracer") # TODO center the title string
@@ -49,8 +58,6 @@ class App(CTk.CTk):
         self.new_sheet_button: CTk.CTkButton = self.create_button("New Sheet", button_position=(WINDOW_WIDTH//2-50, WINDOW_HEIGHT//2+50), button_size=(100, 50), 
                           command=lambda: self.create_new_sheet(pos=(WINDOW_WIDTH//2 - (WINDOW_WIDTH*0.9)//2, WINDOW_HEIGHT//2 - (WINDOW_HEIGHT*0.9)//2), size=(WINDOW_WIDTH*0.9, WINDOW_HEIGHT*0.9)), button_color='light blue', text_color='white', corner_radius=10, hover=True) # Create the new sheet button
 
-        # Load new file button
-
     def show_window(self):
         self.root.mainloop() # Start the main loop
 
@@ -60,9 +67,9 @@ class App(CTk.CTk):
 
         """
 
-        # Create a new window
-        new_window = CTk.CTkFrame(self.root, width=size[0], height=size[1]) # Create a new window frame
-        new_window.place(x=pos[0], y=pos[1]) # Pack the new window frame to make it visible
+        # Create new subwindow
+        new_window = CTk.CTkFrame(self.root, width=size[0], height=size[1])
+        new_window.place(x=pos[0], y=pos[1]) # Place the subwindow
 
         # Create a label and entry for text input
         label = CTk.CTkLabel(new_window, text="Enter name of combo sheet:", width=size[0]*0.8, height=30)
@@ -77,8 +84,8 @@ class App(CTk.CTk):
         switch2.place(x=size[0]//2-switch2.winfo_reqwidth()//2, y=170)
 
         #Create color picker
-        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff")
-        color_picker.place(x=size[0]//2-color_picker.winfo_reqwidth()//2, y=220)
+        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff") #TODO change color picker so the color can be changed also by writing the hex code
+        color_picker.place(x=(size[0]-color_picker.winfo_reqwidth())//2-20, y=220) # TODO fix the color picker position
 
         # Create a button to submit the input
         submit_button = CTk.CTkButton(new_window, text="Submit", command=lambda: self.process_new_sheet_input(entry.get(), switch1.get(), switch2.get(), color_picker.get()))
@@ -93,6 +100,10 @@ class App(CTk.CTk):
             switch2_state (bool): The state of switch 2.
         """
         print(f"Text: {text}, Switch 1: {switch1_state}, Switch 2: {switch2_state} Color: {color}")
+
+        if switch1_state: # If the first switch is on
+            ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
+            self.ydk_handler.read_ydk(ydk_path) # Load the ydk file
 
     def create_img(self, img_path: str, img_position: tuple[int, int], img_size: tuple[int, int] = None, label_text: str = '', anchor: str = 'topleft') -> CTk.CTkLabel:
         """
