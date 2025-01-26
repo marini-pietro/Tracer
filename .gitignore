@@ -9,6 +9,12 @@ img/cached_images/cards/*.jpg
 img/cached_images/cards_small/*.jpg
 img/cached_images/cards_cropped/*.jpg
 
+# Exclude specific files but keep the folder structure
+!img/cached_images/
+!img/cached_images/cards/
+!img/cached_images/cards_small/
+!img/cached_images/cards_cropped/
+
 # C extensions
 *.so
 
