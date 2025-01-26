@@ -4,6 +4,11 @@ CTkColorPicker/__pycache__/
 *.py[cod]
 *$py.class
 
+# Cached images
+img/cached_images/cards
+img/cached_images/cards_small
+img/cached_images/cards_cropped
+
 # C extensions
 *.so
 

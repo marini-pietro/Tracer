@@ -30,4 +30,8 @@ class APIHandler:
             raise ValueError("Invalid search target. Please use 'name' or 'id'.")
 
         response = requests.get(BASE_URL + search_value + "=" + search_target)
+        if response.status_code != 200:
+            raise ConnectionError("Could not connect to the API. Please try again later.")
+        
+
         return response.json()

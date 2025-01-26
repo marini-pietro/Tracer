@@ -78,18 +78,22 @@ class App(CTk.CTk):
         entry.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=60)
 
         # Create switches
-        switch1 = CTk.CTkSwitch(new_window, text="Import cards from YDK file.")
+        switch1 = CTk.CTkSwitch(new_window, text="Import cards from YDK file")
         switch1.place(x=size[0]//2-switch1.winfo_reqwidth()//2, y=120)
-        switch2 = CTk.CTkSwitch(new_window, text="Option 2")
+        switch2 = CTk.CTkSwitch(new_window, text="Crop card images")
         switch2.place(x=size[0]//2-switch2.winfo_reqwidth()//2, y=170)
 
         #Create color picker
-        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff") #TODO change color picker so the color can be changed also by writing the hex code
+        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff") #TODO change color picker so the color can be changed also by writing the hex code and by writing RGB values
         color_picker.place(x=(size[0]-color_picker.winfo_reqwidth())//2-20, y=220) # TODO fix the color picker position
 
         # Create a button to submit the input
         submit_button = CTk.CTkButton(new_window, text="Submit", command=lambda: self.process_new_sheet_input(entry.get(), switch1.get(), switch2.get(), color_picker.get()))
         submit_button.place(x=size[0]//2-submit_button.winfo_reqwidth()//2, y=size[1]-submit_button.winfo_reqheight()-10) # Place the button at the bottom center of the window
+
+        #Create a button to close the window
+        close_button = CTk.CTkButton(new_window, text="Close", command=new_window.destroy) #TODO check if destroying the ctkFrame also destroys the widgets inside of it
+        close_button.place(x=size[0]//2-close_button.winfo_reqwidth()//2, y=size[1]-close_button.winfo_reqheight()-submit_button.winfo_reqheight()-20) # Place the button at the bottom center of the window
 
     def process_new_sheet_input(self, text: str, switch1_state, switch2_state, color: str):
         """
