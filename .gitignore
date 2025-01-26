@@ -5,15 +5,9 @@ CTkColorPicker/__pycache__/
 *$py.class
 
 # Cached images
-img/cached_images/cards/*
-img/cached_images/cards_small/*
-img/cached_images/cards_cropped/*
-
-# Ensure the folders are tracked
-!img/cached_images/
-!img/cached_images/cards/
-!img/cached_images/cards_small/
-!img/cached_images/cards_cropped/
+img/cached_images/cards/*.jpg
+img/cached_images/cards_small/*.jpg
+img/cached_images/cards_cropped/*.jpg
 
 # C extensions
 *.so
