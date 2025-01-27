@@ -9,8 +9,8 @@ except ImportError:
 BASE_URL = "https://db.ygoprodeck.com/api/v7/cardinfo.php?"
 
 class APIHandler:
-    def __init__(self):
-        pass
+    def __init__(self, log_handler):
+        self.log_handler = log_handler
 
     def request_card_data(self, search_value, search_target) -> dict:
         """
@@ -31,7 +31,6 @@ class APIHandler:
 
         response = requests.get(BASE_URL + search_value + "=" + search_target)
         if response.status_code != 200:
-            raise ConnectionError("Could not connect to the API. Please try again later.")
-        
+            self.log_handler.log(type="ERROR", message=f"Could not connect to the API at {BASE_URL} with error code {response.status_code}.")
 
         return response.json()

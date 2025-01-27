@@ -9,6 +9,9 @@ img/cached_images/cards/*.jpg
 img/cached_images/cards_small/*.jpg
 img/cached_images/cards_cropped/*.jpg
 
+# Log file
+log.txt
+
 # Exclude specific files but keep the folder structure
 !img/cached_images/
 !img/cached_images/cards/

@@ -6,8 +6,9 @@ except ImportError:
     import aiohttp, asyncio, time
 
 class YDKHandler:
-    def __init__(self, api_handler):
+    def __init__(self, api_handler, log_handler):
         self.api_handler = api_handler
+        self.log_handler = log_handler
         self.deck_positions: dict[str, int] = {"main": 0, "extra": 1, "side": 2}
 
     def read_ydk(self, ydk_file):
@@ -20,7 +21,6 @@ class YDKHandler:
         returns:
             tuple[list[list[int], list[int], list[int]], list[list[dict], list[dict], list[dict]]]: The card ids and card data. The first list contains the card ids, the second list contains the card data. The first list contains the main deck, the second list contains the extra deck, the third list contains the side deck.
         """        
-
         
         card_ids_output: list[list[int], list[int], list[int]] = [[], [], []] # main, extra, side
         card_data_output: list[list[dict], list[dict], list[dict]] = [[], [], []] # main, extra, side
@@ -55,6 +55,8 @@ class YDKHandler:
 
         #Cache the images asynchronously
         asyncio.run(self.cache_images(card_imgs_urls))
+
+        self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}")
 
         return card_ids_output, card_data_output
 
@@ -91,7 +93,7 @@ class YDKHandler:
         """
 
         BASE_CACHED_IMG_PATH: str = "img/cached_images/"
-        print(f"Caching image from {url}", flush=True)
+        print(f"Caching image from {url}", flush=True) # TODO remove this print statement for deployment
         url_splits: list[str] = url.split("/")
 
         card_id: str = url_splits[-1][:-4] # get everything except the last 4 characters
@@ -106,8 +108,9 @@ class YDKHandler:
                     if not os.path.exists(final_img_path):
                         with open(final_img_path, 'wb') as f:
                             f.write(await response.read())
+                            self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
                 else:
-                    print(f"Failed to download image from {url}") # TODO implement logging
+                    self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
 
     def clear_cached_images(self):
         """
@@ -128,3 +131,5 @@ class YDKHandler:
                 final_path = os.path.join(img_path, img)
                 if final_path.endswith(".jpg"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
                     os.remove(final_path)
+
+        self.log_handler.log(type="INFO", message="Cleared all cached images.")

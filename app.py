@@ -8,6 +8,7 @@ try:
     from PIL import Image
     from apihandler import APIHandler
     from ydkhandler import YDKHandler
+    from loghandler import LogHandler
     from config import * # Import everything from config.py without having to name it every time
     from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
     import ctypes
@@ -22,6 +23,7 @@ except ImportError as e:
     from PIL import Image
     from apihandler import APIHandler
     from ydkhandler import YDKHandler
+    from loghandler import LogHandler
     from config import * # Import everything from config.py without having to name it every time
     from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
     import ctypes
@@ -44,9 +46,10 @@ class App(CTk.CTk):
         self.root.grid_columnconfigure(0, weight=1) # Set the column to expand with the window
         self.root.grid_rowconfigure(0, weight=1) # Set the row to expand with the window
 
-        # Initialize the APIHandler and YDKHandler classes
-        self.api_handler = APIHandler()
-        self.ydk_handler = YDKHandler(self.api_handler)
+        # Initialize the APIHandler, YDKHandler and log classes
+        self.log_handler = LogHandler()
+        self.api_handler = APIHandler(self.log_handler)
+        self.ydk_handler = YDKHandler(self.api_handler, self.log_handler)
 
         # Set centered window title and icon
         self.root.title("Tracer") # TODO center the title string
@@ -104,6 +107,10 @@ class App(CTk.CTk):
             switch2_state (bool): The state of switch 2.
         """
         print(f"Text: {text}, Switch 1: {switch1_state}, Switch 2: {switch2_state} Color: {color}")
+        self.log_handler.log(type="INFO", message=f"Created new sheet with name: {text}")
+
+        self.ydk_handler.clear_cached_images() # Clear the cached images TODO remove this line
+        self.log_handler.clear() # Clear the log TODO remove this line
 
         if switch1_state: # If the first switch is on
             ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
