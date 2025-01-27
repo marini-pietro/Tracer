@@ -31,7 +31,6 @@ except ImportError as e:
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
     del ctypes
 
-
 # Initialize constants
 resolution_split: list[str] = WINDOW_RESOLUTION.split("x")
 WINDOW_WIDTH, WINDOW_HEIGHT = int(resolution_split[0]),int(resolution_split[1])
@@ -64,10 +63,19 @@ class App(CTk.CTk):
     def show_window(self):
         self.root.mainloop() # Start the main loop
 
-    def create_new_sheet(self, pos: tuple[int, int] = (0, 0), size: tuple[int, int] = (100, 100)):
+    def create_new_sheet(self, pos: tuple[int, int] = (0, 0), size: tuple[int, int] = (100, 100)) -> None:
         """
         Creates a new sheet in the window.
 
+        params:
+            pos (tuple[int, int]): The position of the new sheet.
+            size (tuple[int, int]): The size of the new sheet
+
+        raises:
+            ValueError: If the position or size tuples are invalid
+
+        returns:
+            None
         """
 
         # Create new subwindow
@@ -82,13 +90,13 @@ class App(CTk.CTk):
 
         # Create switches
         switch1 = CTk.CTkSwitch(new_window, text="Import cards from YDK file")
-        switch1.place(x=size[0]//2-switch1.winfo_reqwidth()//2, y=120)
+        switch1.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=170)
         switch2 = CTk.CTkSwitch(new_window, text="Crop card images")
-        switch2.place(x=size[0]//2-switch2.winfo_reqwidth()//2, y=170)
+        switch2.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=210)
 
         #Create color picker
-        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff") #TODO change color picker so the color can be changed also by writing the hex code and by writing RGB values
-        color_picker.place(x=(size[0]-color_picker.winfo_reqwidth())//2-20, y=220) # TODO fix the color picker position
+        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff", rgb_entries=True)
+        color_picker.place(x=size[0]-color_picker.winfo_reqwidth() - 100, y=170) # Center the color picker horizontally
 
         # Create a button to submit the input
         submit_button = CTk.CTkButton(new_window, text="Submit", command=lambda: self.process_new_sheet_input(entry.get(), switch1.get(), switch2.get(), color_picker.get()))
