@@ -46,7 +46,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
         self.configure(fg_color=self.fg_color) # set the foreground color
           
         self.canvas = tkinter.Canvas(self, height=self.image_dimension, width=self.image_dimension, highlightthickness=0, bg=self.fg_color)
-        self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
+        self.canvas.bind("<B1-Motion>", self.on_mouse_drag) # bind the mouse drag event to the canvas
 
         self.img1 = Image.open(os.path.join(PATH, 'color_wheel.png')).resize((self.image_dimension, self.image_dimension), Image.Resampling.LANCZOS)
         self.img2 = Image.open(os.path.join(PATH, 'target.png')).resize((self.target_dimension, self.target_dimension), Image.Resampling.LANCZOS)
@@ -66,14 +66,15 @@ class CTkColorPicker(customtkinter.CTkFrame):
                                               button_corner_radius=self.corner_radius, corner_radius=self.corner_radius,
                                               command=lambda x:self.update_colors(), orientation=orientation, **slider_kwargs)
         
-        self.label = customtkinter.CTkLabel(master=self, text_color="#000000", width=10, fg_color=self.default_hex_color,
-                                            corner_radius=self.corner_radius, text=self.default_hex_color, wraplength=1)
+        self.label = customtkinter.CTkEntry(master=self, text_color="#000000", width=10, fg_color=self.default_hex_color,
+                            corner_radius=self.corner_radius, textvariable=tkinter.StringVar(value=self.default_hex_color))
+        self.label.bind("<KeyRelease>", self.on_key_released) # bind key release event to the label
+
         if orientation=="vertical":
             self.canvas.pack(pady=20, side="left", padx=(10,0))
             self.slider.pack(fill="y", pady=15, side="right", padx=(0,10-self.slider_border))
             self.label.pack(expand=True, fill="both", padx=10, pady=15)
         else:
-            self.label.configure(wraplength=100)
             self.canvas.pack(pady=15, padx=15)
             self.slider.pack(fill="x", pady=(0,10-self.slider_border), padx=15)
             self.label.pack(expand=True, fill="both", padx=15, pady=(0,15))
@@ -100,6 +101,31 @@ class CTkColorPicker(customtkinter.CTkFrame):
         del self.wheel
         del self.target
         
+    def on_key_released(self, event) -> None:
+        """
+        Update the color when the enter key is pressed.
+        
+        params:
+            event: tkinter.Event The event object.
+        raises:
+            None
+        returns:
+            None
+        """
+        #This method needs to take event as an argument, otherwise it will raise an error, even if it is not used.
+        # Method used to update the color when any key is released in the entry widget
+
+        self.default_hex_color = self.label.get()
+        if not self.default_hex_color.startswith('#'): # if the hex color does not start with #
+            self.default_hex_color = '#' + self.default_hex_color.replace('#', '') # add # to the hex color and remove any #
+
+        if len(self.default_hex_color) != 7: # if the length of the hex color is not 7 (6 numbers and #)
+            self.default_hex_color = "#ffffff"
+        print(self.default_hex_color) 
+
+        self.rgb_color = tuple(int(self.default_hex_color.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+        self.update_colors()
+
     def on_mouse_drag(self, event) -> None:
         """
         Get the color of the target pixel and update the colors.
