@@ -21,29 +21,29 @@ class CTkColorPicker(customtkinter.CTkFrame):
                  corner_radius: int = 24,
                  command = None,
                  orientation = "vertical",
-                 **slider_kwargs):
+                 **slider_kwargs) -> None:
     
         super().__init__(master=master, corner_radius=corner_radius)
         
-        WIDTH = width if width>=200 else 200
-        HEIGHT = WIDTH + 150
-        self.image_dimension = int(self._apply_widget_scaling(WIDTH - 100))
-        self.target_dimension = int(self._apply_widget_scaling(20))
-        self.lift()
+        WIDTH = width if width>=200 else 200 # width cannot be less than 200
+        HEIGHT = WIDTH + 150 # height cannot be less than 350
+        self.image_dimension = int(self._apply_widget_scaling(WIDTH - 100)) # image dimension
+        self.target_dimension = int(self._apply_widget_scaling(20)) # target dimension
+        self.lift() # lift the widget to the top
 
         self.after(10)       
-        self.default_hex_color = "#ffffff"  
-        self.default_rgb = [255, 255, 255]
-        self.rgb_color = self.default_rgb[:]
+        self.default_hex_color = "#ffffff" # default color is white
+        self.default_rgb = [255, 255, 255] # default color is white
+        self.rgb_color = self.default_rgb[:] # default color is white
         
         self.fg_color = self._apply_appearance_mode(self._fg_color) if fg_color is None else fg_color
-        self.corner_radius = corner_radius
+        self.corner_radius = corner_radius # corner radius of the slider
         
-        self.command = command
+        self.command = command # command to execute when the color is changed
             
-        self.slider_border = 10 if slider_border>=10 else slider_border
+        self.slider_border = 10 if slider_border>=10 else slider_border # slider border cannot be less than 10
         
-        self.configure(fg_color=self.fg_color)
+        self.configure(fg_color=self.fg_color) # set the foreground color
           
         self.canvas = tkinter.Canvas(self, height=self.image_dimension, width=self.image_dimension, highlightthickness=0, bg=self.fg_color)
         self.canvas.bind("<B1-Motion>", self.on_mouse_drag)
@@ -55,10 +55,10 @@ class CTkColorPicker(customtkinter.CTkFrame):
         self.target = ImageTk.PhotoImage(self.img2)
         
         self.canvas.create_image(self.image_dimension/2, self.image_dimension/2, image=self.wheel)
-        self.set_initial_color(initial_color)
+        self.set_initial_color(initial_color) # set the initial color
         
-        self.brightness_slider_value = customtkinter.IntVar()
-        self.brightness_slider_value.set(255)
+        self.brightness_slider_value = customtkinter.IntVar() 
+        self.brightness_slider_value.set(255) # set value of brightness slider to 255
         
         self.slider = customtkinter.CTkSlider(master=self, width=20, border_width=self.slider_border,
                                               button_length=15, progress_color=self.default_hex_color, from_=0, to=255,
@@ -82,32 +82,65 @@ class CTkColorPicker(customtkinter.CTkFrame):
         self._color = self.label._fg_color
         return self._color
     
-    def destroy(self):
+    def destroy(self) -> None:
+        """
+        Destroy the widget and its elements.
+        
+        params:
+            None
+        raises:
+            None
+        returns:
+            None
+        """
+
         super().destroy()
         del self.img1
         del self.img2
         del self.wheel
         del self.target
         
-    def on_mouse_drag(self, event):
+    def on_mouse_drag(self, event) -> None:
+        """
+        Get the color of the target pixel and update the colors.
+        
+        params:
+            event: tkinter.Event The event object.
+        raises:
+            None
+        returns:
+            None
+        """
+
         x = event.x
         y = event.y
-        self.canvas.delete("all")
-        self.canvas.create_image(self.image_dimension/2, self.image_dimension/2, image=self.wheel)
+        self.canvas.delete("all") # clear the canvas
+        self.canvas.create_image(self.image_dimension/2, self.image_dimension/2, image=self.wheel) # redraw the wheel
         
-        d_from_center = math.sqrt(((self.image_dimension/2)-x)**2 + ((self.image_dimension/2)-y)**2)
+        d_from_center = math.sqrt(((self.image_dimension/2)-x)**2 + ((self.image_dimension/2)-y)**2) # distance from center
         
         if d_from_center < self.image_dimension/2:
             self.target_x, self.target_y = x, y
         else:
             self.target_x, self.target_y = self.projection_on_circle(x, y, self.image_dimension/2, self.image_dimension/2, self.image_dimension/2 -1)
 
-        self.canvas.create_image(self.target_x, self.target_y, image=self.target)
+        self.canvas.create_image(self.target_x, self.target_y, image=self.target) # draw the target
         
         self.get_target_color()
         self.update_colors()
   
-    def get_target_color(self):
+    def get_target_color(self) -> None:
+        """
+        Get the color of the target pixel.
+        
+        params:
+            None
+        raises:
+            AttributeError if the target pixel is out of bounds
+        returns:
+            None
+        """
+
         try:
             self.rgb_color = self.img1.getpixel((self.target_x, self.target_y))
             
@@ -119,7 +152,18 @@ class CTkColorPicker(customtkinter.CTkFrame):
         except AttributeError:
             self.rgb_color = self.default_rgb
     
-    def update_colors(self):
+    def update_colors(self) -> None:
+        """
+        Update the colors of the slider and the label.
+
+        params:
+            None
+        raises:
+            None
+        returns:
+            None
+        """
+
         brightness = self.brightness_slider_value.get()
 
         self.get_target_color()
@@ -137,6 +181,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
         
         self.label.configure(text=str(self.default_hex_color))
         
+        # change text color based on brightness
         if self.brightness_slider_value.get() < 70:
             self.label.configure(text_color="white")
         else:
@@ -148,7 +193,21 @@ class CTkColorPicker(customtkinter.CTkFrame):
         if self.command:
             self.command(self.get())
             
-    def projection_on_circle(self, point_x, point_y, circle_x, circle_y, radius):
+    def projection_on_circle(self, point_x, point_y, circle_x, circle_y, radius) -> tuple[int, int]:
+        """
+        Get the projection of a point on a circle.
+
+        params:
+            point_x: int The x-coordinate of the point.
+            point_y: int The y-coordinate of the point.
+            circle_x: int The x-coordinate of the center of the circle.
+            circle_y: int The y-coordinate of the center of the circle.
+            radius: int The radius of the circle.
+        raises:
+            None
+        returns:
+            tuple[int, int] The x and y coordinates of the projection.
+        """
         angle = math.atan2(point_y - circle_y, point_x - circle_x)
         projection_x = circle_x + radius * math.cos(angle)
         projection_y = circle_y + radius * math.sin(angle)

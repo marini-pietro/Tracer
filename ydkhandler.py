@@ -125,4 +125,6 @@ class YDKHandler:
         for img_type in ["cards", "cards_small", "cards_cropped"]:
             img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type)
             for img in os.listdir(img_path):
-                os.remove(os.path.join(img_path, img))
+                final_path = os.path.join(img_path, img)
+                if final_path.endswith(".jpg"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
+                    os.remove(final_path)
