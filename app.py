@@ -95,7 +95,7 @@ class App(CTk.CTk):
         switch2.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=210)
 
         #Create color picker
-        color_picker = CTkColorPicker(new_window, orientation="horizontal", initial_color="#ffffff", rgb_entries=True)
+        color_picker = CTkColorPicker(new_window, orientation="horizontal", rgb_entries=True)
         color_picker.place(x=size[0]-color_picker.winfo_reqwidth() - 100, y=170) # Center the color picker horizontally
 
         # Create a button to submit the input
