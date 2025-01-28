@@ -26,6 +26,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
         
         WIDTH: int = width if width>=200 else 200 # width cannot be less than 200
         HEIGHT: int = WIDTH + 150 # height cannot be less than 350
+        self.are_rgb_entries_present: bool = rgb_entries # Store the value of rgb_entries parameter (useful to consult later when updating the value of entries)
         self.image_dimension: int = int(self._apply_widget_scaling(WIDTH - 100)) # image dimension
         self.target_dimension: int = int(self._apply_widget_scaling(20)) # target dimension
         self.lift() # lift the widget to the top
@@ -77,7 +78,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
 
         # create the rgb entries if required
         if rgb_entries:
-            self.rgb_frame: customtkinter.CTkFrame = customtkinter.CTkFrame(master=self, fg_color=self.fg_color)
+            self.rgb_frame: customtkinter.CTkFrame = customtkinter.CTkFrame(master=self, fg_color=self.fg_color) # create a frame for rgb values
             colors: list[str] = ("#000000", "#ffffff") # text colors (automatically selected based on appearance mode (light, dark))
             self.couple_frames: list[customtkinter.CTkFrame] = [customtkinter.CTkFrame(master=self.rgb_frame, fg_color=self.fg_color) for i in range(3)] # create 3 frames to couple the labels and entries
             channel_letters: list[str] = ["R", "G", "B"] # channel letters
@@ -211,7 +212,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
         """
         
         # update the text of the rgb entries
-        [self.rgb_entries[i].configure(textvariable=tkinter.StringVar(value=str(self.rgb_color[i]))) for i in range(3)] 
+        if self.are_rgb_entries_present: [self.rgb_entries[i].configure(textvariable=tkinter.StringVar(value=str(self.rgb_color[i]))) for i in range(3)] # update the text of the rgb entries (only if they are present) 
 
     def on_mouse_drag(self, event) -> None:
         """
@@ -263,8 +264,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
                           int(self.rgb_color[2] * (brightness/255))] # update the rgb color
         
         #update the rgb entries
-        [self.rgb_entries[i].delete(0, "end") for i in range(3)]
-        [self.rgb_entries[i].insert(0, str(self.rgb_color[i])) for i in range(3)]
+        self.update_rgb_entries()
 
         self.hex_color = "#{:02x}{:02x}{:02x}".format(*self.rgb_color) # update the hex color
         
