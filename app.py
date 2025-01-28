@@ -4,32 +4,24 @@ del sys
 
 try:
     import customtkinter as CTk
-    from tkinter import filedialog
+    from tkinter import filedialog, StringVar
     from PIL import Image
-    from apihandler import APIHandler
-    from ydkhandler import YDKHandler
-    from loghandler import LogHandler
-    from config import * # Import everything from config.py without having to name it every time
-    from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
-    import ctypes
-    ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
-    del ctypes
 
-except ImportError as e:
+except ImportError:
     os.system("pip install -r requirements.txt") # Install the required packages
     import customtkinter as CTk
-    from tkinter import filedialog
+    from tkinter import filedialog, StringVar
     from PIL import Image
-    from apihandler import APIHandler
-    from ydkhandler import YDKHandler
-    from loghandler import LogHandler
-    from config import * # Import everything from config.py without having to name it every time
-    from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
-    import ctypes
-    ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
-    del ctypes
+
+from config import * # Import everything from config.py without having to name it every time
+import ctypes
+ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
+from apihandler import APIHandler
+from ydkhandler import YDKHandler
+from loghandler import LogHandler
+from canvashandler import CanvasHandler
+from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
 
 # Initialize constants
 resolution_split: list[str] = WINDOW_RESOLUTION.split("x")
@@ -39,31 +31,38 @@ class App(CTk.CTk):
     def __init__(self):
         # Initialize the main window
         CTk.set_appearance_mode(APPEARENCE_MODE) # Set the appearance mode
-        self.root = CTk.CTk() # Create the main window class
-        self.root.geometry(WINDOW_RESOLUTION) # Set the window resolution
-        self.root.resizable(False, False) # Disable window resizing
-        self.root.grid_columnconfigure(0, weight=1) # Set the column to expand with the window
-        self.root.grid_rowconfigure(0, weight=1) # Set the row to expand with the window
+        super().__init__()  # Initialize the CTk window
+        self.geometry(WINDOW_RESOLUTION) # Set the window resolution
+        self.resizable(False, False) # Disable window resizing
+        self.grid_columnconfigure(0, weight=1) # Set the column to expand with the window
+        self.grid_rowconfigure(0, weight=1) # Set the row to expand with the window
 
         # Initialize the APIHandler, YDKHandler and log classes
         self.log_handler = LogHandler()
-        self.api_handler = APIHandler(self.log_handler)
-        self.ydk_handler = YDKHandler(self.api_handler, self.log_handler)
+        self.api_handler = APIHandler(log_handler=self.log_handler)
+        self.ydk_handler = YDKHandler(api_handler=self.api_handler, log_handler=self.log_handler)
+        self.canvas_handler = CanvasHandler(log_handler=self.log_handler)
 
         # Set centered window title and icon
-        self.root.title("Tracer") # TODO center the title string
+        self.title("Tracer") # TODO center the title string
         if os.name == "nt": # If the OS is Windows
-            self.root.iconbitmap("./img/icon.ico")
+            self.iconbitmap("./img/icon.ico")
 
-        # Initial menu window
-        self.main_logo_label: CTk.CTkLabel = self.create_img("./img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2-150), anchor="center") # Load the main logo
-        self.new_sheet_button: CTk.CTkButton = self.create_button("New Sheet", button_position=(WINDOW_WIDTH//2-50, WINDOW_HEIGHT//2+50), button_size=(100, 50), 
-                          command=lambda: self.create_new_sheet(pos=(WINDOW_WIDTH//2 - (WINDOW_WIDTH*0.9)//2, WINDOW_HEIGHT//2 - (WINDOW_HEIGHT*0.9)//2), size=(WINDOW_WIDTH*0.9, WINDOW_HEIGHT*0.9)), button_color='light blue', text_color='white', corner_radius=10, hover=True) # Create the new sheet button
+        # Initial menu window widgets
+        self.main_logo_label: CTk.CTkLabel = self.create_img("./img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2), anchor="center") # Load the main logo
+        self.new_sheet_button: CTk.CTkButton = self.create_button("New Sheet",
+                                                                  button_position=(WINDOW_WIDTH//2-50, WINDOW_HEIGHT//2+50),
+                                                                  button_size=(100, 50), button_color='white',
+                                                                  text_color='black', corner_radius=10, hover=True,
+                                                                  command=lambda: self.new_sheet_window(pos=(WINDOW_WIDTH//2 - (WINDOW_WIDTH*0.9)//2, WINDOW_HEIGHT//2 - (WINDOW_HEIGHT*0.9)//2), size=(WINDOW_WIDTH*0.9, WINDOW_HEIGHT*0.9))) # Create the new sheet button
+        
+        self.import_sheet_button: CTk.CTkButton = self.create_button("Import Sheet",
+                                                                     button_position=(WINDOW_WIDTH//2-50, WINDOW_HEIGHT//2+120),
+                                                                     button_size=(100, 50), button_color='white', 
+                                                                     text_color='black', corner_radius=10, hover=True,
+                                                                     command=self.import_sheet_dialogue) # Create the import sheet button
 
-    def show_window(self):
-        self.root.mainloop() # Start the main loop
-
-    def create_new_sheet(self, pos: tuple[int, int] = (0, 0), size: tuple[int, int] = (100, 100)) -> None:
+    def new_sheet_window(self, pos: tuple[int, int] = (0, 0), size: tuple[int, int] = (100, 100)) -> None:
         """
         Creates a new sheet in the window.
 
@@ -79,50 +78,87 @@ class App(CTk.CTk):
         """
 
         # Create new subwindow
-        new_window = CTk.CTkFrame(self.root, width=size[0], height=size[1])
+        new_window = CTk.CTkFrame(master=self, width=size[0], height=size[1])
         new_window.place(x=pos[0], y=pos[1]) # Place the subwindow
 
         # Create a label and entry for text input
-        label = CTk.CTkLabel(new_window, text="Enter name of combo sheet:", width=size[0]*0.8, height=30)
-        label.place(x=size[0]//2-label.winfo_reqwidth()//2, y=10)
-        entry = CTk.CTkEntry(new_window, width=size[0]*0.8, height=50)
-        entry.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=60)
+        sheet_name_label = CTk.CTkLabel(new_window, text="Enter name of combo sheet:", width=size[0]*0.8, height=30)
+        sheet_name_label.place(x=size[0] // 2 - sheet_name_label.winfo_reqwidth() // 2, y=10)
+        sheet_name_entry = CTk.CTkEntry(new_window, width=size[0]*0.8, height=50, font=("Helvetica", 16))
+        sheet_name_entry.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2, y=60)
 
         # Create switches
-        switch1 = CTk.CTkSwitch(new_window, text="Import cards from YDK file")
-        switch1.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=170)
-        switch2 = CTk.CTkSwitch(new_window, text="Crop card images")
-        switch2.place(x=size[0]//2-entry.winfo_reqwidth()//2, y=210)
+        import_ydk = CTk.CTkSwitch(new_window, text="Import cards from YDK file")
+        import_ydk.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2, y=170)
+        crop_images = CTk.CTkSwitch(new_window, text="Crop card images")
+        crop_images.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2, y=210)
 
         #Create color picker
         color_picker = CTkColorPicker(new_window, orientation="horizontal", rgb_entries=True)
-        color_picker.place(x=size[0]-color_picker.winfo_reqwidth() - 100, y=170) # Center the color picker horizontally
+        color_picker.place(x=size[0] - color_picker.winfo_reqwidth() - 100, y=170) # Center the color picker horizontally
+
+        #Create entry for canvas color
+        canvas_color_label = CTk.CTkLabel(new_window, text="Enter canvas color:")
+        canvas_color_label.update_idletasks() # Update the label to get the correct dimensions
+        canvas_color_label.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2, y=250)
+        canvas_color_entry = CTk.CTkEntry(new_window, width=75, height=25, font=("Helvetica", 14))
+        canvas_color_entry.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + canvas_color_label.winfo_reqwidth() + 5, y=250)
+        canvas_color_entry.configure(textvariable=StringVar(value="#FFFFFF")) # Set the default color to white
+        canvas_color_button = CTk.CTkButton(new_window, text="Get from picker", command=lambda: canvas_color_entry.configure(textvariable=StringVar(value=color_picker.get())))
+        canvas_color_button.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + canvas_color_label.winfo_reqwidth() + canvas_color_entry.winfo_reqwidth() + 25, y=250)
+
+        #Create entry for arrow color
+        arrow_color_label = CTk.CTkLabel(new_window, text="Enter arrow color:")
+        arrow_color_label.update_idletasks() # Update the label to get the correct dimensions
+        arrow_color_label.place(x=size[0]//2-sheet_name_entry.winfo_reqwidth()//2, y=290)
+        arrow_color_entry = CTk.CTkEntry(new_window, width=75, height=25, font=("Helvetica", 14))
+        arrow_color_entry.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + arrow_color_label.winfo_reqwidth() + 5, y=290)
+        arrow_color_entry.configure(textvariable=StringVar(value="#000000")) # Set the default color to black
+        arrow_color_button = CTk.CTkButton(new_window, text="Get from picker", command=lambda: arrow_color_entry.configure(textvariable=StringVar(value=color_picker.get())))
+        arrow_color_button.place(x=size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + arrow_color_label.winfo_reqwidth() + arrow_color_entry.winfo_reqwidth() + 25, y=290)
 
         # Create a button to submit the input
-        submit_button = CTk.CTkButton(new_window, text="Submit", command=lambda: self.process_new_sheet_input(entry.get(), switch1.get(), switch2.get(), color_picker.get()))
+        submit_button = CTk.CTkButton(new_window, text="Submit", command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), crop_images=crop_images.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get()))
         submit_button.place(x=size[0]//2-submit_button.winfo_reqwidth()//2, y=size[1]-submit_button.winfo_reqheight()-10) # Place the button at the bottom center of the window
 
         #Create a button to close the window
         close_button = CTk.CTkButton(new_window, text="Close", command=new_window.destroy) #TODO check if destroying the ctkFrame also destroys the widgets inside of it
         close_button.place(x=size[0]//2-close_button.winfo_reqwidth()//2, y=size[1]-close_button.winfo_reqheight()-submit_button.winfo_reqheight()-20) # Place the button at the bottom center of the window
 
-    def process_new_sheet_input(self, text: str, switch1_state, switch2_state, color: str):
+    def process_new_sheet_input(self, sheet_name: str, import_ydk: str, crop_images: str, canvas_color: str, arrow_color: str) -> None:
         """
         Process the input from the new sheet settings window.
-        Args:
-            text (str): The text input.
-            switch1_state (bool): The state of switch 1.
-            switch2_state (bool): The state of switch 2.
+        
+        params:
+            sheet_name (str): The name of the new sheet.
+            import_ydk (str): If the ydk import switch is on.
+            crop_images (str): If the image crop switch is on.
+            canvas_color (str): The color of the canvas.
+            arrow_color (str): The color of the arrows.
         """
-        print(f"Text: {text}, Switch 1: {switch1_state}, Switch 2: {switch2_state} Color: {color}")
-        self.log_handler.log(type="INFO", message=f"Created new sheet with name: {text}")
 
-        self.ydk_handler.clear_cached_images() # Clear the cached images TODO remove this line
-        self.log_handler.clear() # Clear the log TODO remove this line
+        print(f"Sheet name: {sheet_name}, Import ydk: {import_ydk}, Crop images: {crop_images}, Canvas color: {canvas_color}, Arrow color: {arrow_color}") # Print the input for debugging
 
-        if switch1_state: # If the first switch is on
+        self.log_handler.log(type="INFO", message=f"Created new sheet with name: {sheet_name}.") # Log the creation of a new sheet
+        self.canvas_handler.set_root_window(root_window=self) # Set the root window of the canvas handler
+
+        if import_ydk: # If the ydk import switch is on
             ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
-            self.ydk_handler.read_ydk(ydk_path) # Load the ydk file
+            card_ids, card_data, card_img_paths = self.ydk_handler.read_ydk(ydk_path) # Load the ydk file
+            
+            # Pass all the cached images file system paths to the canvas handler
+            for img_type_paths in card_img_paths:
+                for img_path in img_type_paths:
+                    self.canvas_handler.add_image_to_list(img_path) # Add the card images to the canvas handler
+
+            print(self.canvas_handler.images)
+
+    def import_sheet_dialogue(self) -> None:
+        """
+        Opens a file dialog to import a combo sheet.
+        """
+
+        file_path = filedialog.askopenfilename(title="Select combo sheet", filetypes=[("Combo sheet files", "*.ycs")]) # Open the file dialog to select a combo sheet TODO: implement this feature
 
     def create_img(self, img_path: str, img_position: tuple[int, int], img_size: tuple[int, int] = None, label_text: str = '', anchor: str = 'topleft') -> CTk.CTkLabel:
         """
@@ -154,7 +190,7 @@ class App(CTk.CTk):
         pillow_img: Image = Image.open(img_path) # Open the image with pillow
         if img_size is None: img_size = pillow_img.size # If no size is provided, use the image size
         ctk_img = CTk.CTkImage(pillow_img, size=img_size) # Load the image into ctk image class with correct arguments
-        ctk_label = CTk.CTkLabel(self.root, image=ctk_img, text=label_text) # Load the image into ctk label class
+        ctk_label = CTk.CTkLabel(master=self, image=ctk_img, text=label_text) # Load the image into ctk label class
         ctk_label.pack()
         match anchor:
             case "topleft":
@@ -196,10 +232,10 @@ class App(CTk.CTk):
         if len(button_size) != 2: raise ValueError("Button size must be a tuple with 2 integers.")
         if (button_size[0] <= 0 or button_size[1] <= 0): raise ValueError("Button size must be greater than 0.")
 
-        button = CTk.CTkButton(self.root, text=text, command=command, fg_color=button_color, text_color=text_color, width=button_size[0], height=button_size[1], hover=hover, corner_radius=corner_radius) # Create the button object
+        button = CTk.CTkButton(master=self, text=text, command=command, fg_color=button_color, text_color=text_color, width=button_size[0], height=button_size[1], hover=hover, corner_radius=corner_radius) # Create the button object
         button.place(x=button_position[0], y=button_position[1]) # Set the button position and size
         return button
 
 if __name__ == "__main__":
     app = App()
-    app.show_window() # Start the main window
+    app.mainloop()

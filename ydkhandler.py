@@ -24,6 +24,7 @@ class YDKHandler:
         
         card_ids_output: list[list[int], list[int], list[int]] = [[], [], []] # main, extra, side
         card_data_output: list[list[dict], list[dict], list[dict]] = [[], [], []] # main, extra, side
+        card_img_paths: list[list[str, str, str]] = [[], [], []] # This list will contain all the card image paths (full, small, cropped)
         card_imgs_urls: list[list[str, str, str]] = [] # This list will contain all the card image URLs that need to be cached (passed to the cache_img function in thread)
 
         with open(ydk_file, "r") as f:
@@ -54,17 +55,17 @@ class YDKHandler:
             f.close()
 
         #Cache the images asynchronously
-        asyncio.run(self.cache_images(card_imgs_urls))
+        asyncio.run(self.cache_images(card_imgs_urls, card_img_paths))
 
-        self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}")
+        self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}.")
 
-        return card_ids_output, card_data_output
+        return card_ids_output, card_data_output, card_img_paths
 
 
     def write_ydk(self, ydk_file, ydk): # TODO implement ydk writing
         raise NotImplementedError
 
-    async def cache_images(self, card_imgs_urls):
+    async def cache_images(self, card_imgs_urls, card_img_paths_list):
         """
         Caches images from a list of card image URLs.
 
@@ -77,10 +78,10 @@ class YDKHandler:
             None
         """
 
-        tasks = [self.cache_img(url) for urls in card_imgs_urls for url in urls]
+        tasks = [self.cache_img(url, card_img_paths_list) for urls in card_imgs_urls for url in urls] # create a list of tasks to cache the images
         await asyncio.gather(*tasks)
 
-    async def cache_img(self, url):
+    async def cache_img(self, url, card_img_paths_list):
         """
         Caches an image from a URL.
 
@@ -109,8 +110,12 @@ class YDKHandler:
                         with open(final_img_path, 'wb') as f:
                             f.write(await response.read())
                             self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
-                else:
-                    self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
+                            # add the image path to the list of image paths based on the image type (used later in canvashandler to create pillow Image objects)
+                            if img_type == "cards": card_img_paths_list[0].append(final_img_path)
+                            elif img_type == "cards_small": card_img_paths_list[1].append(final_img_path)
+                            elif img_type == "cards_cropped": card_img_paths_list[2].append(final_img_path)
+                
+                else: self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
 
     def clear_cached_images(self):
         """
