@@ -5,7 +5,7 @@ except ImportError:
     os.system("pip install requests aiohttp")
     import aiohttp, asyncio, time
 
-class YDKHandler:
+class YDKParser:
     def __init__(self, api_handler, log_handler):
         self.api_handler = api_handler
         self.log_handler = log_handler
@@ -39,6 +39,7 @@ class YDKHandler:
                 elif line == "!side":
                     position = self.deck_positions["side"]
                     continue
+                elif line == "": continue # skip empty lines
 
                 card_ids_output[position].append(line) # add the card id to the list of card ids
                 
@@ -93,8 +94,7 @@ class YDKHandler:
             None
         """
 
-        BASE_CACHED_IMG_PATH: str = "img/cached_images/"
-        print(f"Caching image from {url}", flush=True) # TODO remove this print statement for deployment
+        BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
         url_splits: list[str] = url.split("/")
 
         card_id: str = url_splits[-1][:-4] # get everything except the last 4 characters
@@ -117,7 +117,7 @@ class YDKHandler:
                 
                 else: self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
 
-    def clear_cached_images(self):
+    def clear_cache(self):
         """
         Clears the cached images.
 
@@ -129,7 +129,7 @@ class YDKHandler:
             None
         """
 
-        BASE_CACHED_IMG_PATH: str = "img/cached_images/"
+        BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
         for img_type in ["cards", "cards_small", "cards_cropped"]:
             img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type)
             for img in os.listdir(img_path):

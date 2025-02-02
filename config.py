@@ -6,5 +6,14 @@ KNOWN_RESOLUTIONS = {
     '640x480': "640x480"
 }
 WINDOW_RESOLUTION = KNOWN_RESOLUTIONS['720p']
-APP_ID = 'Tracer.V1.0'
+VERSION = '1.0'
+APP_ID = 'Tracer V'+VERSION
 APPEARENCE_MODE = 'dark' # dark, light or system
+
+# Keybinds
+keybinds = {
+    'arrow_placement': 'a',
+    'card_placement': 'c',
+    'delete_selected': 'Del',
+    'move_selected': 'm'
+}
