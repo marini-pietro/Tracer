@@ -362,10 +362,10 @@ class CTkColorPicker(customtkinter.CTkFrame):
             for j in range(height):
                 r, g, b = self.color_wheel_image.getpixel((i, j))[:-1]
                 if (color[0], color[1], color[2]) == (r, g, b):
-                    print(f"Found color at {i, j}", end=" ")
+                    print(f"Found color at {i, j}")
                     return i, j
                 
-        print("Color not found defaulting to center of the image", end=" ")
+        print("Color not found defaulting to center of the image")
         return width//2, height//2
         
     def projection_on_circle(self, point_x, point_y, circle_x, circle_y, radius) -> tuple[int, int]:

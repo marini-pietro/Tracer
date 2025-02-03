@@ -11,6 +11,7 @@ except ImportError:
     from PIL import Image, ImageTk
 
 from config import keybinds, VERSION
+from utils import create_img
 
 class CanvasHandler:
     def __init__(self, log_handler, root_window = None, canvas_color: str = "#ffffff", arrow_color: str = "#000000"):
@@ -101,21 +102,56 @@ class CanvasHandler:
         self.about_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # CARD VIEW TAB
-        self.card_view_frame = CTk.CTkFrame(self.card_view_tab)
-        self.card_view_tab_entry = CTk.CTkEntry(self.card_view_frame, font=("Helvetica", 16))
+            #Frame and relative widgets
+        self.card_view_tab_frame = CTk.CTkFrame(self.card_view_tab)
+        self.card_view_tab_image =  create_img(master=self.card_view_tab_frame, img_path="data/img/card_back_2.png", #TODO check for copyright on the images 
+                                               img_position=(100, 100), img_size=(100, 100), scale=0.5, should_be_placed=False)
+            #Label and entry
+        self.card_view_tab_label = CTk.CTkLabel(self.card_view_tab_frame, text="Enter name of card:", font=("Helvetica", 16))
+        self.card_view_tab_entry = CTk.CTkEntry(self.card_view_tab_frame, font=("Helvetica", 16))
+
+            # 
+
+            # Option menus and relative labels
         level_options: list[str] = ["Any", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
         race_options: list[str] = ["Any", "Aqua", "Beast", "Beast-Warrior", "Cyberse", "Dinosaur", "Divine-Beast", "Dragon",
                         "Fairy", "Fiend", "Fish", "Insect", "Machine", "Plant", "Psychic", "Pyro", "Reptile", "Rock", 
                         "Sea Serpent", "Spellcaster", "Thunder", "Warrior", "Winged Beast", "Wyrm", "Zombie"]
         attribute_options: list[str] = ["Any", "Dark", "Divine", "Earth", "Fire", "Light", "Water", "Wind"]
         type_options: list[str] = ["Any", "Effect", "Fusion", "Link", "Normal", "Pendulum", "Ritual", "Synchro", "Trap", "Xyz"]
+        
+        self.card_view_tab_level_label = CTk.CTkLabel(self.card_view_tab, text="Level:", font=("Helvetica", 16))
+        self.card_view_tab_level_options = CTk.CTkOptionMenu(self.card_view_tab, values=level_options)
+        
+        self.card_view_tab_race_label = CTk.CTkLabel(self.card_view_tab, text="Race:", font=("Helvetica", 16))
+        self.card_view_tab_race_options = CTk.CTkOptionMenu(self.card_view_tab, values=race_options)
+        
+        self.card_view_tab_attribute_label = CTk.CTkLabel(self.card_view_tab, text="Attribute:", font=("Helvetica", 16))
+        self.card_view_tab_attribute_options = CTk.CTkOptionMenu(self.card_view_tab, values=attribute_options)
+        
+        self.card_view_tab_type_label = CTk.CTkLabel(self.card_view_tab, text="Type:", font=("Helvetica", 16))
+        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options)
 
-        self.card_view_tab_level_options = CTk.CTkOptionMenu(self.card_view_frame, values=level_options)
-        self.card_view_tab_race_options = CTk.CTkOptionMenu(self.card_view_frame, values=race_options)
-        self.card_view_tab_attribute_options = CTk.CTkOptionMenu(self.card_view_frame, values=attribute_options)
-        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_frame, values=type_options)
+            # Pack the widgets TODO fix this
+        self.card_view_tab_frame.pack(fill=tk.BOTH, expand=True) # Pack the frame
+        # Pack the image to the right
+        self.card_view_tab_image.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False, padx=10, pady=10)
 
-        # TODO place the above widgets in the card_view_frame
+        # Create a frame for the other widgets and pack it to the left
+        self.card_view_tab_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the card name label
+        self.card_view_tab_entry.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the card name entry
+
+        self.card_view_tab_level_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the level label
+        self.card_view_tab_level_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the level options
+        
+        self.card_view_tab_race_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the race label
+        self.card_view_tab_race_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the race options
+        
+        self.card_view_tab_attribute_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the attribute label
+        self.card_view_tab_attribute_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the attribute options
+        
+        self.card_view_tab_type_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the type label
+        self.card_view_tab_type_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the type options
 
     def add_image_to_list(self, image_path):
         """
