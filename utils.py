@@ -16,7 +16,7 @@ def clear_cache_button_logic() -> bool:
     else: # If there are cached images
         return True
 
-def create_img(master, img_path: str, img_position: tuple[int, int], img_size: tuple[int, int] = None, 
+def create_img(master, img_path: str, img_position: tuple[int, int] = (0,0), img_size: tuple[int, int] = None, 
                label_text: str = '', anchor: str = 'topleft', scale: float = 1.0, should_be_placed: bool = True) -> CTk.CTkLabel:
     """
     Loads an places image into the window with the given path, position and size.
@@ -25,7 +25,7 @@ def create_img(master, img_path: str, img_position: tuple[int, int], img_size: t
         master (CTk.CTkWindow): The window to place the image in.
         img_path (str): The path to the image file.
         img_position (tuple[int, int]): The position to place the image (only used if should_be_placed is omitted or set to True).
-        img_size (tuple[int, int], optional): The size of the image. If None, the image size is used. Defaults to None.
+        img_size (tuple[int, int], optional): The size of the image. If None, the image size is used. Not recommended to use with scale parameter.
         label_text (str, optional): The text to display with the image. Defaults to ''.
         anchor (str, optional): The anchor point of the image (only used if should_be_placed is omitted or set to True). Defaults to 'topleft'.
         scale (float, optional): The scale of the image. Defaults to 1.0.
@@ -42,7 +42,7 @@ def create_img(master, img_path: str, img_position: tuple[int, int], img_size: t
     # Check if the arguments are valid and raise an error if they are not
     if not os.path.exists(img_path): raise FileNotFoundError(f"Image file not found at path: {img_path}") # Check if the image file exists
     if len(img_position) != 2: raise ValueError("Image position must be a tuple with 2 integers.") # Check if the image position is valid
-    if (img_position[0] <= 0 or img_position[1] <= 0): raise ValueError(f"Image position must be greater than 0.\nx={img_position[0]} y={img_position[1]}") # Check if the image position is valid
+    if (img_position[0] < 0 or img_position[1] < 0): raise ValueError(f"Image position must be greater than 0.\nx={img_position[0]} y={img_position[1]}") # Check if the image position is valid
     if img_size is not None and len(img_size) != 2: raise ValueError("Image size must be a tuple with 2 integers.") # Check if the image size tuple lenght is valid
     if img_size is not None and (img_size[0] <= 0 or img_size[1] <= 0): raise ValueError("Image size must be greater than 0.") # Check if the image size is valid
     if anchor not in ["topleft", "center", "bottomright", "topright", "bottomleft"]: raise ValueError("Invalid anchor point.") # Check if the anchor point is valid

@@ -102,17 +102,15 @@ class CanvasHandler:
         self.about_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # CARD VIEW TAB
-            #Frame and relative widgets
+        # | Frame and relative widgets
         self.card_view_tab_frame = CTk.CTkFrame(self.card_view_tab)
-        self.card_view_tab_image =  create_img(master=self.card_view_tab_frame, img_path="data/img/card_back_2.png", #TODO check for copyright on the images 
-                                               img_position=(100, 100), img_size=(100, 100), scale=0.5, should_be_placed=False)
-            #Label and entry
+        self.card_view_tab_preview_image =  create_img(master=self.card_view_tab_frame, img_path="data/img/card_back_2.png", #TODO check for copyright on the images 
+                                                       scale=0.25, should_be_placed=False)
+        # | Label and entry
         self.card_view_tab_label = CTk.CTkLabel(self.card_view_tab_frame, text="Enter name of card:", font=("Helvetica", 16))
         self.card_view_tab_entry = CTk.CTkEntry(self.card_view_tab_frame, font=("Helvetica", 16))
 
-            # 
-
-            # Option menus and relative labels
+        # | Option menus and relative labels
         level_options: list[str] = ["Any", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
         race_options: list[str] = ["Any", "Aqua", "Beast", "Beast-Warrior", "Cyberse", "Dinosaur", "Divine-Beast", "Dragon",
                         "Fairy", "Fiend", "Fish", "Insect", "Machine", "Plant", "Psychic", "Pyro", "Reptile", "Rock", 
@@ -132,26 +130,9 @@ class CanvasHandler:
         self.card_view_tab_type_label = CTk.CTkLabel(self.card_view_tab, text="Type:", font=("Helvetica", 16))
         self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options)
 
-            # Pack the widgets TODO fix this
-        self.card_view_tab_frame.pack(fill=tk.BOTH, expand=True) # Pack the frame
-        # Pack the image to the right
-        self.card_view_tab_image.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False, padx=10, pady=10)
-
-        # Create a frame for the other widgets and pack it to the left
-        self.card_view_tab_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the card name label
-        self.card_view_tab_entry.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the card name entry
-
-        self.card_view_tab_level_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the level label
-        self.card_view_tab_level_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the level options
-        
-        self.card_view_tab_race_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the race label
-        self.card_view_tab_race_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the race options
-        
-        self.card_view_tab_attribute_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the attribute label
-        self.card_view_tab_attribute_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the attribute options
-        
-        self.card_view_tab_type_label.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the type label
-        self.card_view_tab_type_options.pack(fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the type options
+        # | Pack the widgets
+        self.card_view_tab_frame.pack(fill=tk.BOTH, expand=False) # Pack the frame
+        self.card_view_tab_preview_image.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the image to the right
 
     def add_image_to_list(self, image_path):
         """
@@ -197,21 +178,21 @@ class CanvasHandler:
         """
         Marks the position of the canvas when the left mouse button is pressed.
         """
-
+        print("Left button pressed")
         self.canvas.scan_mark(event.x, event.y)
 
     def on_left_mouse_drag(self, event):
         """
         Drags the canvas when the left mouse button is pressed.
         """
-
+        print("Left mouse drag")
         self.canvas.scan_dragto(event.x, event.y, gain=1)
 
     def on_mouse_wheel(self, event):
         """
         Zooms in or out of the canvas when the mouse wheel is scrolled.
         """
-
+        print("Mouse wheel scrolled")
         scale_factor = 1.1 if event.delta > 0 else 0.9
         self.scale *= scale_factor
         self.canvas.scale("all", event.x, event.y, scale_factor, scale_factor)
@@ -221,14 +202,14 @@ class CanvasHandler:
         """
         Marks the position of the canvas when the right mouse button is pressed.
         """
-
+        print("Right button pressed")
         self.canvas.scan_mark(event.x, event.y)
 
     def on_right_mouse_drag(self, event):
         """
         Drags the canvas when the right mouse button is pressed.
         """
-
+        print("Right mouse drag")
         self.canvas.scan_dragto(event.x, event.y, gain=1)
 
     def add_image(self, image_path, x, y):
@@ -244,6 +225,8 @@ class CanvasHandler:
 
         raises: None
         """
+
+        print(f"Adding image at x={x} y={y}")
         image = Image.open(image_path)
         image = ImageTk.PhotoImage(image)
         self.images.append(image)  # Keep a reference to avoid garbage collection
