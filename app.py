@@ -51,7 +51,7 @@ class App(CTk.CTk):
             self.iconbitmap("./data/img/icon.ico")
 
         # Initial menu window widgets
-        self.main_logo_label: CTk.CTkLabel = create_img(master=self, img_path="./data/img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 100), 
+        self.main_logo_label: CTk.CTkLabel = create_img(master=self, img_path="data/img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 100), 
                                                               anchor="center", scale=0.75) # Load the main logo
         self.new_sheet_button: CTk.CTkButton = create_button(master=self, text="New Sheet",
                                                                   button_position=(WINDOW_WIDTH//2-150, WINDOW_HEIGHT//2+200),

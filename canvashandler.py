@@ -8,13 +8,14 @@ except ImportError:
     del os
     import customtkinter as CTk
     import tkinter as tk
-    from PIL import Image, ImageTk
+    from tkinter import filedialog
+    from PIL import Image, ImageTk, ImageDraw
 
 from config import keybinds, VERSION
-from utils import create_img
+from utils import create_img, create_button
 from datetime import datetime
 
-class CanvasHandler:
+class CanvasHandler: #TODO add possibility to discard current canvas and return to main menu
     def __init__(self, log_handler, root_window = None, sheet_name: str = None, canvas_color: str = "#ffffff", arrow_color: str = "#000000"):
         self.root_window = root_window
         self.log_handler = log_handler
@@ -27,12 +28,23 @@ class CanvasHandler:
         self.card_view_tab = self.tabs.add("Card View")
         self.help_tab = self.tabs.add("Help")
 
+        # Initialize variables
+        self.scale: float = 1.0
+        self.images: list[Image.Image] = [[ ], [ ], [ ]] # full size, small size, cropped size
+
+        #self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window TODO implement this
+
+        # CANVAS TAB
+        # | Init widgets
         self.canvas: tk.Canvas = tk.Canvas(self.canvas_tab, bg=canvas_color)
+        self.share_button: CTk.CTkButton = create_button(master=self.canvas_tab, type="image", command = lambda : self.export_canvas_to_png(filedialog.asksaveasfile()),  #TODO fix this (it looks very bad) and add file types and default extensions to asksaveasfile function
+                                                         img_path="data/img/share_icon_light.png", button_size=(50, 50), 
+                                                         should_be_placed=False)
         
-        # Set the default color of the arrows
+        # | Set the default color of the arrows
         self.arrow_color: str = arrow_color
 
-        # Bind events
+        # | Bind events
         self.canvas.bind("<ButtonPress-1>", self.on_left_button_press)
         self.canvas.bind("<ButtonPress-3>", self.on_right_button_press)
 
@@ -41,11 +53,8 @@ class CanvasHandler:
 
         self.canvas.bind("<MouseWheel>", self.on_mouse_wheel)
 
-        # Initialize variables
-        self.scale: float = 1.0
-        self.images: list[Image.Image] = [[ ], [ ], [ ]] # full size, small size, cropped size
-
-        #self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window TODO implement this
+        # | Place the widgets
+        self.share_button.place(relx=1.0, x=-60, y=10, anchor='ne')
 
         # HELP TAB
         help_tab_frame = CTk.CTkFrame(self.help_tab)
@@ -106,7 +115,7 @@ class CanvasHandler:
 
         # CARD VIEW TAB
         # | Frame and relative widgets
-        self.card_view_tab_frame = CTk.CTkFrame(self.card_view_tab)
+        self.card_view_tab_frame = CTk.CTkFrame(self.card_view_tab, corner_radius=25, fg_color="#333333")
         self.card_view_tab_preview_image =  create_img(master=self.card_view_tab_frame, img_path="data/img/card_back_2.png", #TODO check for copyright on the images 
                                                        scale=0.30, should_be_placed=False)
         self.card_view_tab_preview_image_text = CTk.CTkLabel(self.card_view_tab_frame, text="Lorem Ipsum", font=("Helvetica", 16))
@@ -124,38 +133,38 @@ class CanvasHandler:
         type_options: list[str] = ["Any", "Effect", "Fusion", "Link", "Normal", "Pendulum", "Ritual", "Synchro", "Trap", "Xyz"]
         
         self.card_view_tab_level_label = CTk.CTkLabel(self.card_view_tab, text="Level:", font=("Helvetica", 16))
-        self.card_view_tab_level_options = CTk.CTkOptionMenu(self.card_view_tab, values=level_options)
+        self.card_view_tab_level_options = CTk.CTkOptionMenu(self.card_view_tab, values=level_options, fg_color="#333333", button_hover_color="#555555")
         
         self.card_view_tab_race_label = CTk.CTkLabel(self.card_view_tab, text="Race:", font=("Helvetica", 16))
-        self.card_view_tab_race_options = CTk.CTkOptionMenu(self.card_view_tab, values=race_options)
+        self.card_view_tab_race_options = CTk.CTkOptionMenu(self.card_view_tab, values=race_options, fg_color="#333333", button_hover_color="#555555")
         
         self.card_view_tab_attribute_label = CTk.CTkLabel(self.card_view_tab, text="Attribute:", font=("Helvetica", 16))
-        self.card_view_tab_attribute_options = CTk.CTkOptionMenu(self.card_view_tab, values=attribute_options)
+        self.card_view_tab_attribute_options = CTk.CTkOptionMenu(self.card_view_tab, values=attribute_options, fg_color="#333333", button_hover_color="#555555")
         
         self.card_view_tab_type_label = CTk.CTkLabel(self.card_view_tab, text="Type:", font=("Helvetica", 16))
-        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options)
+        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options, fg_color="#333333", button_hover_color="#555555")
 
         # | Pack the widgets
         #   | Card preview frame
         self.card_view_tab_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False) # Pack the frame to the right
-        self.card_view_tab_preview_image.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the image to the top
-        self.card_view_tab_preview_image_text.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the text to the top
+        self.card_view_tab_preview_image.pack(side=tk.TOP, fill=tk.BOTH, padx=50, pady=50) # Pack the image to the top
+        self.card_view_tab_preview_image_text.pack(side=tk.TOP, fill=tk.BOTH, padx=50, pady=50) # Pack the text to the top
 
         #   | Search filters
-        self.card_view_tab_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
-        self.card_view_tab_entry.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the entry to the top
+        self.card_view_tab_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the label to the top
+        self.card_view_tab_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the entry to the top
 
-        self.card_view_tab_level_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
-        self.card_view_tab_level_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
+        self.card_view_tab_level_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
+        self.card_view_tab_level_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
 
-        self.card_view_tab_race_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
-        self.card_view_tab_race_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
+        self.card_view_tab_race_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
+        self.card_view_tab_race_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
 
-        self.card_view_tab_attribute_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
-        self.card_view_tab_attribute_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
+        self.card_view_tab_attribute_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
+        self.card_view_tab_attribute_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
 
-        self.card_view_tab_type_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
-        self.card_view_tab_type_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
+        self.card_view_tab_type_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
+        self.card_view_tab_type_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
 
     def add_image_to_list(self, image_path):
         """
@@ -254,6 +263,32 @@ class CanvasHandler:
         image = ImageTk.PhotoImage(image)
         self.images.append(image)  # Keep a reference to avoid garbage collection
         self.canvas.create_image(x, y, image=image, anchor=tk.CENTER)
+
+    def export_canvas_to_png(self, file_path):
+        """
+        Exports the current canvas to a PNG file.
+
+        params: file_path: str - The path where the PNG file will be saved.
+        return: None
+        """
+        # Get the canvas width and height
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        # Create a new PIL image with the same size as the canvas
+        image = Image.new("RGB", (canvas_width, canvas_height), "white")
+        draw = ImageDraw.Draw(image)
+
+        # Draw the canvas content onto the PIL image
+        self.canvas.update()
+        self.canvas.postscript(file=file_path + ".ps", colormode='color')
+
+        # Convert the postscript file to a PNG file
+        ps_image = Image.open(file_path + ".ps")
+        ps_image.save(file_path, "png")
+
+        # Remove the temporary postscript file
+        os.remove(file_path + ".ps")
 
     def show(self):
         """

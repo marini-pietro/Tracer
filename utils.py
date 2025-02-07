@@ -69,14 +69,28 @@ def create_img(master, img_path: str, img_position: tuple[int, int] = (0,0), img
 
     return ctk_label
     
-def create_button(master, text: str, button_position: tuple[int, int], button_size: tuple[int, int], command: callable, fg_color: str = "#2b2b2b", text_color: str = "white", 
-                  corner_radius: int = None, hover: bool = True, hover_color: tuple[int, int, int] | str = None, border_color: tuple[int, int, int] | str = None, should_be_placed: bool = True) -> CTk.CTkButton:
+def create_button(master, 
+                  button_size: tuple[int, int], 
+                  command: callable, 
+                  text: str = "",
+                  fg_color: str = "#2b2b2b", 
+                  text_color: str = "white", 
+                  type: str = "text", 
+                  img_path: str = None,
+                  button_position: tuple[int, int] = None, corner_radius: int = None, 
+                  hover: bool = True, 
+                  hover_color: tuple[int, int, int] | str = None, 
+                  border_color: tuple[int, int, int] | str = None, 
+                  should_be_placed: bool = True) -> CTk.CTkButton:
     """
     Creates a button in the window with the given text, position, size and command.
 
     params:
-        text (str): The text to display on the button.
-        button_position (tuple[int, int]): The position to place the button.
+        master (CTk.CTkWindow): The window to place the button in.
+        text (str): The text to display on the button (only used if type is set to text, defaults to None).
+        type (str): The type of the button. Can be "text" or "image".
+        img_path (str): The path to the image file (only used if type is "image").
+        button_position (tuple[int, int]): The position to place the button (only used if should_be_placed is omitted or set to true).
         should_be_placed (bool, optional): If the button should be placed in the window with the given tuple button_position. Defaults to True.
         button_size (tuple[int, int]): The size of the button.
         command (callable): The function to call when the button is clicked.
@@ -95,8 +109,8 @@ def create_button(master, text: str, button_position: tuple[int, int], button_si
     """
 
     # Check if the arguments are valid
-    if len(button_position) != 2: raise ValueError("Button position must be a tuple with 2 integers.") # Check if the button position is valid
-    if (button_position[0] <= 0 or button_position[1] <= 0): raise ValueError("Button position must be greater than 0.")
+    if button_position is not None and len(button_position) != 2: raise ValueError("Button position must be a tuple with 2 integers.") # Check if the button position is valid
+    if button_position is not None and (button_position[0] <= 0 or button_position[1] <= 0): raise ValueError("Button position must be greater than 0.")
     if len(button_size) != 2: raise ValueError("Button size must be a tuple with 2 integers.")
     if (button_size[0] <= 0 or button_size[1] <= 0): raise ValueError("Button size must be greater than 0.")
 
@@ -106,8 +120,16 @@ def create_button(master, text: str, button_position: tuple[int, int], button_si
     elif fg_color == "transparent":
         hover_color = "#2b2b2b"
         
-    button = CTk.CTkButton(master=master, text=text, command=command, fg_color=fg_color, text_color=text_color, width=button_size[0], height=button_size[1], hover=hover, corner_radius=corner_radius, hover_color=hover_color, border_color=border_color) # Create the button object
-    
+    if type == "text": button = CTk.CTkButton(master=master, text=text, command=command, fg_color=fg_color, text_color=text_color, width=button_size[0], height=button_size[1], hover=hover, corner_radius=corner_radius, hover_color=hover_color, border_color=border_color) # Create the button object
+    elif type == "image": 
+        ctk_img = CTk.CTkImage(Image.open(img_path), size=button_size) # Load the image into ctk image class with correct arguments
+        button = CTk.CTkButton(master=master, image=ctk_img, 
+                               command=command, fg_color=fg_color, 
+                               text_color=text_color, width=button_size[0],
+                               height=button_size[1], hover=hover, 
+                               corner_radius=corner_radius, hover_color=hover_color, 
+                               border_color=border_color, text=text) # Create the button object
+
     if should_be_placed: button.place(x=button_position[0], y=button_position[1]) # Set the button position and size
     
     return button
