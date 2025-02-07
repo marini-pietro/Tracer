@@ -12,14 +12,17 @@ except ImportError:
 
 from config import keybinds, VERSION
 from utils import create_img
+from datetime import datetime
 
 class CanvasHandler:
-    def __init__(self, log_handler, root_window = None, canvas_color: str = "#ffffff", arrow_color: str = "#000000"):
+    def __init__(self, log_handler, root_window = None, sheet_name: str = None, canvas_color: str = "#ffffff", arrow_color: str = "#000000"):
         self.root_window = root_window
         self.log_handler = log_handler
+        if sheet_name is not None: self.sheet_name = sheet_name # Set the sheet name to the provided value
+        self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y%m%d')}" # Set the sheet name to the current date if no name is provided
 
         # Create tabview widget and its tabs
-        self.tabs  = CTk.CTkTabview(self.root_window)
+        self.tabs = CTk.CTkTabview(self.root_window)
         self.canvas_tab = self.tabs.add("Canvas")
         self.card_view_tab = self.tabs.add("Card View")
         self.help_tab = self.tabs.add("Help")
@@ -105,10 +108,12 @@ class CanvasHandler:
         # | Frame and relative widgets
         self.card_view_tab_frame = CTk.CTkFrame(self.card_view_tab)
         self.card_view_tab_preview_image =  create_img(master=self.card_view_tab_frame, img_path="data/img/card_back_2.png", #TODO check for copyright on the images 
-                                                       scale=0.25, should_be_placed=False)
+                                                       scale=0.30, should_be_placed=False)
+        self.card_view_tab_preview_image_text = CTk.CTkLabel(self.card_view_tab_frame, text="Lorem Ipsum", font=("Helvetica", 16))
+        
         # | Label and entry
-        self.card_view_tab_label = CTk.CTkLabel(self.card_view_tab_frame, text="Enter name of card:", font=("Helvetica", 16))
-        self.card_view_tab_entry = CTk.CTkEntry(self.card_view_tab_frame, font=("Helvetica", 16))
+        self.card_view_tab_label = CTk.CTkLabel(self.card_view_tab, text="Enter name of card:", font=("Helvetica", 16))
+        self.card_view_tab_entry = CTk.CTkEntry(self.card_view_tab, font=("Helvetica", 16))
 
         # | Option menus and relative labels
         level_options: list[str] = ["Any", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
@@ -131,8 +136,26 @@ class CanvasHandler:
         self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options)
 
         # | Pack the widgets
-        self.card_view_tab_frame.pack(fill=tk.BOTH, expand=False) # Pack the frame
-        self.card_view_tab_preview_image.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the image to the right
+        #   | Card preview frame
+        self.card_view_tab_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=False) # Pack the frame to the right
+        self.card_view_tab_preview_image.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the image to the top
+        self.card_view_tab_preview_image_text.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the text to the top
+
+        #   | Search filters
+        self.card_view_tab_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
+        self.card_view_tab_entry.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the entry to the top
+
+        self.card_view_tab_level_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
+        self.card_view_tab_level_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
+
+        self.card_view_tab_race_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
+        self.card_view_tab_race_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
+
+        self.card_view_tab_attribute_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
+        self.card_view_tab_attribute_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
+
+        self.card_view_tab_type_label.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the label to the top
+        self.card_view_tab_type_options.pack(side=tk.TOP, fill=tk.BOTH, expand=False, padx=10, pady=10) # Pack the option menu to the top
 
     def add_image_to_list(self, image_path):
         """

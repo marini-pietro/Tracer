@@ -48,8 +48,9 @@ def create_img(master, img_path: str, img_position: tuple[int, int] = (0,0), img
     if anchor not in ["topleft", "center", "bottomright", "topright", "bottomleft"]: raise ValueError("Invalid anchor point.") # Check if the anchor point is valid
 
     pillow_img: Image = Image.open(img_path) # Open the image with pillow
-    if img_size is None: img_size = pillow_img.size # If no size is provided, use the image size
-    pillow_img = pillow_img.resize((int(img_size[0]*scale), int(img_size[1]*scale))) # Apply the scale to the image
+    if img_size is None: img_size = (int(pillow_img.width * scale), int(pillow_img.height * scale)) # If no size is provided, use the scaled image size
+    else: img_size = (int(img_size[0] * scale), int(img_size[1] * scale)) # Apply the scale to the provided size
+    pillow_img = pillow_img.resize(img_size) # Resize the image
     ctk_img = CTk.CTkImage(pillow_img, size=img_size) # Load the image into ctk image class with correct arguments
     ctk_label = CTk.CTkLabel(master=master, image=ctk_img, text=label_text) # Load the image into ctk label class
 
