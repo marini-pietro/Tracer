@@ -130,12 +130,12 @@ class App(CTk.CTk):
 
         #Create a button to close the window
         close_button = create_button(master=self.new_frame, text="Close", button_position=(window_size[0]//2-50, window_size[1]-120), 
-                                          button_size=(100, 50), command=self.new_frame.destroy, text_color='white', hover=True, fg_color="#565656") # Create a close button
+                                          button_size=(100, 50), command=self.new_frame.destroy, text_color='white', hover=True, fg_color="#565656", corner_radius=10) # Create a close button
 
         # Create a button to submit the input
         submit_button = create_button(master=self.new_frame, text="Submit", button_position=(window_size[0]//2-50, window_size[1]-60), button_size=(100, 50), 
                                            command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), crop_images=crop_images.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get()), 
-                                           text_color='white', hover=True, fg_color="#565656")
+                                           text_color='white', hover=True, fg_color="#565656", corner_radius=10) # Create a submit button
 
     def process_new_sheet_input(self, sheet_name: str, import_ydk: str, crop_images: str, canvas_color: str, arrow_color: str) -> None:
         """
@@ -148,8 +148,6 @@ class App(CTk.CTk):
             canvas_color (str): The color of the canvas.
             arrow_color (str): The color of the arrows.
         """
-
-        print(f"Sheet name: {sheet_name}, Import ydk: {import_ydk}, Crop images: {crop_images}, Canvas color: {canvas_color}, Arrow color: {arrow_color}") # Print the input for debugging
 
         self.log_handler.log(type="INFO", message=f"Created new sheet with name: {sheet_name}.") # Log the creation of a new sheet
         self.canvas_handler.set_root_window(root_window=self) # Set the root window of the canvas handler

@@ -1,7 +1,8 @@
 try:
     import customtkinter as CTk
     import tkinter as tk
-    from PIL import Image, ImageTk
+    from tkinter import filedialog
+    from PIL import Image, ImageTk, ImageDraw
 except ImportError:
     import os
     os.system("pip install customtkinter tkinter pillow")
@@ -25,20 +26,23 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         # Create tabview widget and its tabs
         self.tabs = CTk.CTkTabview(self.root_window)
         self.canvas_tab = self.tabs.add("Canvas")
-        self.card_view_tab = self.tabs.add("Card View")
+        self.cards_tab = self.tabs.add("Cards")
+        self.card_view_tab = self.tabs.add("Card search")
         self.help_tab = self.tabs.add("Help")
 
         # Initialize variables
         self.scale: float = 1.0
+        self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0}
         self.images: list[Image.Image] = [[ ], [ ], [ ]] # full size, small size, cropped size
-
-        #self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window TODO implement this
 
         # CANVAS TAB
         # | Init widgets
         self.canvas: tk.Canvas = tk.Canvas(self.canvas_tab, bg=canvas_color)
-        self.share_button: CTk.CTkButton = create_button(master=self.canvas_tab, type="image", command = lambda : self.export_canvas_to_png(filedialog.asksaveasfile()),  #TODO fix this (it looks very bad) and add file types and default extensions to asksaveasfile function
-                                                         img_path="data/img/share_icon_light.png", button_size=(50, 50), 
+        self.share_button: CTk.CTkButton = create_button(master=self.canvas_tab, 
+                                                         type="image", 
+                                                         command = lambda : self.export_canvas_to_png(filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png"), ("All files", "*.*")])),  #TODO fix this (it looks very bad)
+                                                         img_path="data/img/share_icon_light.png", 
+                                                         button_size=(50, 50), 
                                                          should_be_placed=False)
         
         # | Set the default color of the arrows
@@ -46,6 +50,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         # | Bind events
         self.canvas.bind("<ButtonPress-1>", self.on_left_button_press)
+        self.canvas.bind("<ButtonRelease-1>", self.on_left_button_release)
         self.canvas.bind("<ButtonPress-3>", self.on_right_button_press)
 
         self.canvas.bind("<B1-Motion>", self.on_left_mouse_drag)
@@ -54,16 +59,38 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.canvas.bind("<MouseWheel>", self.on_mouse_wheel)
 
         # | Place the widgets
-        self.share_button.place(relx=1.0, x=-60, y=10, anchor='ne')
+        self.share_button.place(relx=1.0, x=-10, y=10, anchor='ne')
+
+        # CARDS TAB
+        # | Init widgets
+        self.cards_list_frame = CTk.CTkFrame(self.cards_tab, corner_radius=25, fg_color="#333333")
+        self.cards_details_frame = CTk.CTkFrame(self.cards_tab, corner_radius=25, fg_color="#333333")
+        self.cards_empty_label = CTk.CTkLabel(self.cards_list_frame, text="No cards in the list.\nPress \"Import from YDK\" button or go to \"Cards search\" tab to add cards.", 
+                                              font=("Helvetica", 16))
+        
+        self.cards_tab_import_button = create_button(master=self.cards_details_frame,
+                                                     type="text",
+                                                     command=lambda: self.log_handler("Import from YDK button pressed."),
+                                                     text="Import from YDK",
+                                                     button_size=(30, 10),
+                                                     should_be_placed=False)
+        
+        # | Place the widgets
+        self.cards_list_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=10, expand=True) # Pack the frame to the left
+        self.cards_details_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=10, expand=True) # Pack the frame to the right
+        self.cards_tab_import_button.pack(side=tk.BOTTOM, expand=False, padx=10, pady=10) # Pack the button to the bottom
+        if len(self.images[0]) == 0 and len(self.images[1]) == 0 and len(self.images[2]) == 0: # If there are not images in the list place the empty label
+            self.cards_empty_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # HELP TAB
         help_tab_frame = CTk.CTkFrame(self.help_tab)
         help_tab_frame.pack(fill=tk.BOTH, expand=True)
 
+        # | Init widgets
         navigation_help_label_string = (
             "Navigation:\n\n"
             "Left click and drag to move the canvas.\n"
-            "Right click and drag to select items.\n"
+            "Right click and drag to select item.\n"
             "Scroll to zoom in and out."
         )
         keybinds_help_label_string = (
@@ -96,7 +123,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
             self.about_help_frame, anchor="center", text=f"About:\n\nOpen source created by Pietro Marini (marini-pietro on GitHub)\nVersion: {VERSION}", font=("Helvetica", 16)
         )
 
-        # Pack the frames
+        # | Place the widgets
         self.navigation_help_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         self.keybinds_help_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
         self.IO_help_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
@@ -107,7 +134,6 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         help_tab_frame.grid_columnconfigure(0, weight=1, uniform="col")
         help_tab_frame.grid_columnconfigure(1, weight=1, uniform="col")
 
-        # Pack the labels
         self.navigation_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.keybinds_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.IO_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -166,7 +192,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.card_view_tab_type_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
         self.card_view_tab_type_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
 
-    def add_image_to_list(self, image_path):
+    def add_image_to_list(self, image_path): # Check if it is really necessary
         """
         Adds a Pillow Image object to the list of images to be displayed on the canvas.
 
@@ -176,6 +202,167 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         if "cards" in image_path: self.images[0].append(Image.open(image_path))
         elif "cards_small" in image_path: self.images[1].append(Image.open(image_path))
         elif "cards_cropped" in image_path: self.images[2].append(Image.open(image_path))
+
+    # Event handling functions
+
+    def on_left_button_press(self, event):
+        """
+        Marks the position of the canvas when the left mouse button is pressed.
+        """
+        
+        # Check if the user has pressed on an item with the tag "image"
+        item = self.canvas.find_withtag("current") # Get the item that the user has clicked on
+        if "image" not in self.canvas.gettags(item): # Check if the item has the tag "image"
+            return
+
+        # Highlight the image
+        x1, y1, x2, y2 = self.canvas.bbox(item[0])
+        self.drag_data["highlighter"] = self.canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=5, tags="highlighter")
+
+        # Store the item and its initial position
+        self.drag_data["item"] = item
+        self.drag_data["x"] = event.x
+        self.drag_data["y"] = event.y
+
+    def on_left_mouse_drag(self, event):
+        """
+        Moves the highlighted image when the left mouse button is dragged.
+        """
+        if self.drag_data["item"]:
+            dx = event.x - self.drag_data["x"]
+            dy = event.y - self.drag_data["y"]
+            self.canvas.move(self.drag_data["item"], dx, dy)
+            self.canvas.move(self.drag_data["highlighter"], dx, dy)
+            self.drag_data["x"] = event.x
+            self.drag_data["y"] = event.y
+
+    def on_left_button_release(self, event):
+        """
+        Resets the drag data when the left mouse button is released.
+        """
+        self.drag_data["item"] = None
+        self.drag_data["x"] = 0
+        self.drag_data["y"] = 0
+
+    def on_mouse_wheel(self, event):
+        """
+        Zooms in or out of the canvas when the mouse wheel is scrolled.
+        """
+
+        scale_factor = 1.1 if event.delta > 0 else 0.9
+        self.scale *= scale_factor
+        self.canvas.scale("all", event.x, event.y, scale_factor, scale_factor)
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self.canvas.xview_scroll(int(-1 * event.delta / 120), "units")
+        self.canvas.yview_scroll(int(-1 * event.delta / 120), "units")
+
+    def on_right_button_press(self, event):
+        """
+        Marks the position of the canvas when the right mouse button is pressed.
+        """
+
+        # Create a menu
+        menu = tk.Menu(self.canvas, tearoff=0)
+        menu.add_command(label="Add card image", command=lambda: self.add_image("data/img/card_back_1.png", scale=0.25, x=event.x, y=event.y))
+        menu.add_command(label="Add arrow", command=lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
+
+        # Show the menu at the mouse position
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def add_image(self, image_path, scale, x, y):
+        """
+        Adds an image to the canvas.
+
+        params:
+            image_path: str - The path to the image file.
+            scale: float - The scale of the image.
+            x: int - The x-coordinate of the image.
+            y: int - The y-coordinate of the image.
+
+        return: None
+
+        raises: None
+        """
+
+        image = Image.open(image_path)
+        image = image.resize((int(image.width * scale), int(image.height * scale)), Image.LANCZOS)
+        image = ImageTk.PhotoImage(image)
+        self.images.append(image)  # Keep a reference to avoid garbage collection
+        self.canvas.create_image(x, y, image=image, anchor=tk.CENTER, tags="image")
+
+    def add_arrow(self, x1, y1, x2, y2):
+        """
+        Adds an arrow to the canvas.
+
+        params:
+            x1: int - The x-coordinate of the starting point.
+            y1: int - The y-coordinate of the starting point.
+            x2: int - The x-coordinate of the ending point.
+            y2: int - The y-coordinate of the ending point.
+
+        return: None
+
+        raises: None
+        """
+
+        self.canvas.create_line(x1, y1, x2, y2, arrow=tk.LAST, fill=self.arrow_color)
+
+    def on_right_mouse_drag(self, event):
+        """
+        Drags the canvas when the right mouse button is pressed.
+        """
+        print("Right mouse drag")
+        self.canvas.scan_dragto(event.x, event.y, gain=1)
+
+    # I/O related functions
+
+    def export_canvas_to_png(self, file_path): # TODO check if it works properly
+        """
+        Exports the current canvas to a PNG file.
+
+        params: file_path: str - The path to the file where the canvas will be saved.
+        return: None
+        """
+
+        # Update the canvas to make sure all elements are drawn
+        self.canvas.update()
+
+        # Get the canvas bounding box
+        bbox = self.canvas.bbox("all")
+
+        # Create a new PIL image with the size of the bounding box
+        image = Image.new("RGB", (bbox[2] - bbox[0], bbox[3] - bbox[1]), self.canvas["bg"])
+
+        # Draw the canvas onto the PIL image
+        draw = ImageDraw.Draw(image)
+        for item in self.canvas.find_all():
+            coords = self.canvas.coords(item)
+            if len(coords) == 4:  # Rectangle or line
+                draw.rectangle(coords, outline=self.arrow_color)
+            elif len(coords) == 2:  # Text or image
+                draw.text(coords, self.canvas.itemcget(item, "text"), fill=self.arrow_color)
+
+        # Save the PIL image to the specified file path
+        image.save(file_path + ".png")
+        
+    def show(self):
+        """
+        Shows the canvas, and destroys the root window when the window is closed.
+        """
+        
+        self.canvas.pack(fill=tk.BOTH, expand=True)
+        self.tabs.pack(fill=tk.BOTH, expand=True)
+
+    def on_close(self):
+        """
+        Called when the window is closed.
+        """
+        for tab in self.tabs.winfo_children():
+            for child in tab.winfo_children():
+                child.destroy()
+        self.root_window.destroy()
+
+    # Setters
 
     def set_root_window(self, root_window):
         """
@@ -187,6 +374,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         return: None
         """
         self.root_window = root_window
+        self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window
 
     def set_canvas_color(self, color: str):
         """
@@ -205,95 +393,3 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         return: None
         """
         self.arrow_color = color
-
-    def on_left_button_press(self, event):
-        """
-        Marks the position of the canvas when the left mouse button is pressed.
-        """
-        print("Left button pressed")
-        self.canvas.scan_mark(event.x, event.y)
-
-    def on_left_mouse_drag(self, event):
-        """
-        Drags the canvas when the left mouse button is pressed.
-        """
-        print("Left mouse drag")
-        self.canvas.scan_dragto(event.x, event.y, gain=1)
-
-    def on_mouse_wheel(self, event):
-        """
-        Zooms in or out of the canvas when the mouse wheel is scrolled.
-        """
-        print("Mouse wheel scrolled")
-        scale_factor = 1.1 if event.delta > 0 else 0.9
-        self.scale *= scale_factor
-        self.canvas.scale("all", event.x, event.y, scale_factor, scale_factor)
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-    def on_right_button_press(self, event):
-        """
-        Marks the position of the canvas when the right mouse button is pressed.
-        """
-        print("Right button pressed")
-        self.canvas.scan_mark(event.x, event.y)
-
-    def on_right_mouse_drag(self, event):
-        """
-        Drags the canvas when the right mouse button is pressed.
-        """
-        print("Right mouse drag")
-        self.canvas.scan_dragto(event.x, event.y, gain=1)
-
-    def add_image(self, image_path, x, y):
-        """
-        Adds an image to the canvas.
-
-        params:
-            image_path: str - The path to the image file.
-            x: int - The x-coordinate of the image.
-            y: int - The y-coordinate of the image.
-
-        return: None
-
-        raises: None
-        """
-
-        print(f"Adding image at x={x} y={y}")
-        image = Image.open(image_path)
-        image = ImageTk.PhotoImage(image)
-        self.images.append(image)  # Keep a reference to avoid garbage collection
-        self.canvas.create_image(x, y, image=image, anchor=tk.CENTER)
-
-    def export_canvas_to_png(self, file_path):
-        """
-        Exports the current canvas to a PNG file.
-
-        params: file_path: str - The path where the PNG file will be saved.
-        return: None
-        """
-        # Get the canvas width and height
-        canvas_width = self.canvas.winfo_width()
-        canvas_height = self.canvas.winfo_height()
-
-        # Create a new PIL image with the same size as the canvas
-        image = Image.new("RGB", (canvas_width, canvas_height), "white")
-        draw = ImageDraw.Draw(image)
-
-        # Draw the canvas content onto the PIL image
-        self.canvas.update()
-        self.canvas.postscript(file=file_path + ".ps", colormode='color')
-
-        # Convert the postscript file to a PNG file
-        ps_image = Image.open(file_path + ".ps")
-        ps_image.save(file_path, "png")
-
-        # Remove the temporary postscript file
-        os.remove(file_path + ".ps")
-
-    def show(self):
-        """
-        Shows the canvas, and destroys the root window when the window is closed.
-        """
-        
-        self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.tabs.pack(fill=tk.BOTH, expand=True)
