@@ -7,14 +7,13 @@ CTkColorPicker/__pycache__/
 # Log file
 log.txt
 
-# Cached images
+# Cached data
 data/img/cached_images/cards/*
 data/img/cached_images/cards_small/*
 data/img/cached_images/cards_cropped/*
 data/card_data/*
 
-# Exclude specific files but keep the folder structure
-!data/img/cached_images/
+# Keep the folders but not the contents
 !data/img/cached_images/cards/
 !data/img/cached_images/cards_small/
 !data/img/cached_images/cards_cropped/
