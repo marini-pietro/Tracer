@@ -15,6 +15,7 @@ except ImportError:
 from config import keybinds, VERSION
 from utils import create_img, create_button
 from datetime import datetime
+import asyncio
 
 class CanvasHandler: #TODO add possibility to discard current canvas and return to main menu
     def __init__(self, log_handler, root_window = None, sheet_name: str = None, canvas_color: str = "#ffffff", arrow_color: str = "#000000"):
@@ -70,7 +71,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         
         self.cards_tab_import_button = create_button(master=self.cards_details_frame,
                                                      type="text",
-                                                     command=lambda: self.log_handler("Import from YDK button pressed."),
+                                                     command=lambda: self.import_ydk_as_pillow_images(filedialog.askopenfilename(filetypes=[("YDK files", "*.ydk"), ("All files", "*.*")])),
                                                      text="Import from YDK",
                                                      button_size=(30, 10),
                                                      should_be_placed=False)
@@ -361,6 +362,20 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
             for child in tab.winfo_children():
                 child.destroy()
         self.root_window.destroy()
+
+    def import_ydk_as_pillow_images(self, ydk_file_path) -> list[Image.Image]:
+        """
+        Imports the images from a YDK file and returns them as Pillow Image objects.
+
+        params: ydk_file_path: str - The path to the YDK file.
+        return: list[Image.Image] - A list of Pillow Image objects.
+        """
+
+        card_ids, card_data, card_img_paths = self.log_handler.read_ydk(ydk_file_path)
+
+        self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file_path}.")
+
+        return [Image.open(img_path) for img_path in card_img_paths]
 
     # Setters
 

@@ -4,19 +4,21 @@ CTkColorPicker/__pycache__/
 *.py[cod]
 *$py.class
 
-# Cached images
-img/cached_images/cards/*.jpg
-img/cached_images/cards_small/*.jpg
-img/cached_images/cards_cropped/*.jpg
-
 # Log file
 log.txt
 
+# Cached images
+data/img/cached_images/cards/*
+data/img/cached_images/cards_small/*
+data/img/cached_images/cards_cropped/*
+data/card_data/*
+
 # Exclude specific files but keep the folder structure
-!img/cached_images/
-!img/cached_images/cards/
-!img/cached_images/cards_small/
-!img/cached_images/cards_cropped/
+!data/img/cached_images/
+!data/img/cached_images/cards/
+!data/img/cached_images/cards_small/
+!data/img/cached_images/cards_cropped/
+!data/card_data/
 
 # C extensions
 *.so

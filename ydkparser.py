@@ -1,9 +1,9 @@
 try:
-    import os, aiohttp, asyncio, time
+    import os, aiohttp, asyncio, time, json
 except ImportError:
     import os
     os.system("pip install requests aiohttp")
-    import aiohttp, asyncio, time
+    import aiohttp, asyncio, time, json
 
 class YDKParser:
     def __init__(self, api_handler, log_handler):
@@ -43,7 +43,21 @@ class YDKParser:
 
                 card_ids_output[position].append(line) # add the card id to the list of card ids
                 
-                card_data: dict = self.api_handler.request_card_data(search_value="id", search_target=line) # request the card data from the API
+                if not os.path.exists(os.path.join("data", "card_data", f"{line}.json")): # If the card data is not cached, request it from the API
+                    card_data: dict = self.api_handler.request_card_data(search_value="id", search_target=line)
+                    
+                    # Cache the card data
+                    card_data_path = os.path.join("data", "card_data", f"{line}.json")
+                    os.makedirs(os.path.dirname(card_data_path), exist_ok=True)
+                    with open(card_data_path, "w") as json_file:
+                        json.dump(card_data, json_file, indent=4)
+                    json_file.close()
+
+                else: # If the card data is cached, read it from the file
+                    with open(os.path.join("data", "card_data", f"{line}.json"), "r") as json_file:
+                        card_data = json.load(json_file)
+                    json_file.close()
+
                 card_data_output[position].append(card_data) # add the card data to the list of card data
 
                 cards_img_urls: list[str, str, str] = [card_data["data"][0]["card_images"][0]["image_url"], 
@@ -119,7 +133,7 @@ class YDKParser:
 
     def clear_cache(self):
         """
-        Clears the cached images.
+        Clears the cache.
 
         params:
             None
@@ -137,4 +151,10 @@ class YDKParser:
                 if final_path.endswith(".jpg"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
                     os.remove(final_path)
 
-        self.log_handler.log(type="INFO", message="Cleared all cached images.")
+        BASE_CACHED_CARD_DATA_PATH: str = "data/card_data/"
+        for card_data in os.listdir(BASE_CACHED_CARD_DATA_PATH):
+            final_path = os.path.join(BASE_CACHED_CARD_DATA_PATH, card_data)
+            if final_path.endswith(".json"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
+                os.remove(final_path)
+
+        self.log_handler.log(type="INFO", message="Cleared all cache.")
