@@ -8,7 +8,7 @@ KNOWN_RESOLUTIONS = {
 }
 WINDOW_RESOLUTION = KNOWN_RESOLUTIONS['720p']
 VERSION = '1.0'
-APP_ID = 'Tracer V'+VERSION
+APP_ID = 'Tracer V'+ VERSION
 APPEARENCE_MODE = 'dark' # dark, light or system
 
 # Keybinds
@@ -17,4 +17,10 @@ keybinds = {
     'card_placement': 'c',
     'delete_selected': 'Del',
     'move_selected': 'm'
+}
+
+# Default colors
+DEFAULT_COLORS = {
+    "ARROW": "#000000",
+    "CANVAS": "#FFFFFF",
 }

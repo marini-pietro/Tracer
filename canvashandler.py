@@ -12,13 +12,18 @@ except ImportError:
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
 
-from config import keybinds, VERSION
+from config import keybinds, VERSION, DEFAULT_COLORS
 from utils import create_img, create_button
 from datetime import datetime
 import asyncio
 
 class CanvasHandler: #TODO add possibility to discard current canvas and return to main menu
-    def __init__(self, log_handler, root_window = None, sheet_name: str = None, canvas_color: str = "#ffffff", arrow_color: str = "#000000"):
+    def __init__(self, log_handler, 
+                 root_window = None, 
+                 sheet_name: str = None, 
+                 canvas_color: str = DEFAULT_COLORS["ARROW"], 
+                 arrow_color: str = DEFAULT_COLORS["CANVAS"]):
+        
         self.root_window = root_window
         self.log_handler = log_handler
         if sheet_name is not None: self.sheet_name = sheet_name # Set the sheet name to the provided value
@@ -32,8 +37,9 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.help_tab = self.tabs.add("Help")
 
         # Initialize variables
-        self.scale: float = 1.0
-        self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0}
+        self.scale: float = 1.0 # The scale of the canvas
+        self.use_cropped_images: bool = False # If True, the cropped images will be used (only the art of the card will be displayed)
+        self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0} # Data used for dragging items on the canvas
         self.images: list[Image.Image] = [[ ], [ ], [ ]] # full size, small size, cropped size
 
         # CANVAS TAB
@@ -193,17 +199,6 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.card_view_tab_type_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
         self.card_view_tab_type_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
 
-    def add_image_to_list(self, image_path): # Check if it is really necessary
-        """
-        Adds a Pillow Image object to the list of images to be displayed on the canvas.
-
-        params: image_path: str - The path to the image file.
-        return: None	
-        """
-        if "cards" in image_path: self.images[0].append(Image.open(image_path))
-        elif "cards_small" in image_path: self.images[1].append(Image.open(image_path))
-        elif "cards_cropped" in image_path: self.images[2].append(Image.open(image_path))
-
     # Event handling functions
 
     def on_left_button_press(self, event):
@@ -347,12 +342,13 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         # Save the PIL image to the specified file path
         image.save(file_path + ".png")
         
-    def show(self):
+    async def show(self):
         """
         Shows the canvas, and destroys the root window when the window is closed.
         """
         
-        self.canvas.pack(fill=tk.BOTH, expand=True)
+        await self.log_handler.log(type="INFO", message=f"Created new sheet with name: {self.sheet_name}.") # Necessary here even if not logically correct to properly, log the sheet name if the user doesn't provide one (see first lines of init method)                                                                                                                                                                       
+        self.canvas.pack(fill=tk.BOTH, expand=True)                                                   
         self.tabs.pack(fill=tk.BOTH, expand=True)
 
     def on_close(self):
@@ -391,6 +387,22 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         """
         self.root_window = root_window
         self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window
+    
+    def add_image_to_list(self, image_path):
+        """
+        Adds a Pillow Image object to the list of images to be displayed on the canvas.
+
+        params: image_path: str - The path to the image file.
+        return: None	
+        """
+
+        if "cards_small" in image_path:
+            self.images[1].append(Image.open(image_path))
+        elif "cards_cropped" in image_path:
+            self.images[2].append(Image.open(image_path))
+        elif "cards" in image_path:
+            self.images[0].append(Image.open(image_path))
+
 
     def set_canvas_color(self, color: str):
         """

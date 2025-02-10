@@ -5,15 +5,12 @@ del sys
 try:
     import customtkinter as CTk
     from tkinter import filedialog, StringVar
-    from PIL import Image
-
 except ImportError:
     os.system("pip install -r requirements.txt") # Install the required packages
     import customtkinter as CTk
     from tkinter import filedialog, StringVar
-    from PIL import Image
 
-from config import * # Import everything from config.py without having to name it every time
+from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS # Import everything from config.py without having to name it every time
 from utils import clear_cache_button_logic, create_img, create_button # Import the necessary functions from utils.py
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
@@ -23,6 +20,7 @@ from ydkparser import YDKParser
 from loghandler import LogHandler
 from canvashandler import CanvasHandler
 from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
+from asyncio import run as asyncio_run
 
 # Initialize constants
 resolution_split: list[str] = WINDOW_RESOLUTION.split("x")
@@ -39,7 +37,7 @@ class App(CTk.CTk):
         self.grid_rowconfigure(0, weight=1) # Set the row to expand with the window
         self.protocol("WM_DELETE_WINDOW", self.destroy) # Set the close button to destroy the window
 
-        # Initialize the APIHandler, YDKParser and log classes
+        # Initialize the necessary objects
         self.log_handler = LogHandler()
         self.api_handler = APIHandler(log_handler=self.log_handler)
         self.ydk_parser = YDKParser(api_handler=self.api_handler, log_handler=self.log_handler)
@@ -51,25 +49,36 @@ class App(CTk.CTk):
             self.iconbitmap("./data/img/icon.ico")
 
         # Initial menu window widgets
-        self.main_logo_label: CTk.CTkLabel = create_img(master=self, img_path="data/img/placeholder_icon.png", img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 100), 
-                                                              anchor="center", scale=0.75) # Load the main logo
-        self.new_sheet_button: CTk.CTkButton = create_button(master=self, text="New Sheet",
-                                                                  button_position=(WINDOW_WIDTH//2-150, WINDOW_HEIGHT//2+200),
-                                                                  button_size=(100, 50),
-                                                                  text_color='white', corner_radius=10, hover=True,
-                                                                  command=lambda: self.new_sheet_window(pos=(WINDOW_WIDTH//2 - (WINDOW_WIDTH*0.9)//2, WINDOW_HEIGHT//2 - (WINDOW_HEIGHT*0.9)//2), window_size=(WINDOW_WIDTH*0.9, WINDOW_HEIGHT*0.9))) # Create the new sheet button
+        self.main_logo_label: CTk.CTkLabel = create_img(master=self, 
+                                                        img_path="data/img/placeholder_icon.png", 
+                                                        img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 100), 
+                                                        anchor="center", 
+                                                        scale=0.75) # Load the main logo
         
-        self.import_sheet_button: CTk.CTkButton = create_button(master=self, text="Import Sheet",
-                                                                     button_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2+200),
-                                                                     button_size=(100, 50), 
-                                                                     text_color='white', corner_radius=10, hover=True,
-                                                                     command=self.import_sheet_dialogue) # Create the import sheet button
+        self.new_sheet_button: CTk.CTkButton = create_button(master=self,
+                                                             text="New Sheet",
+                                                             button_position=(WINDOW_WIDTH//2-150, WINDOW_HEIGHT//2+200),
+                                                             button_size=(100, 50),
+                                                             text_color='white', 
+                                                             corner_radius=10, 
+                                                             hover=True,
+                                                             command=lambda: self.new_sheet_window(pos=(WINDOW_WIDTH//2 - (WINDOW_WIDTH*0.9)//2, WINDOW_HEIGHT//2 - (WINDOW_HEIGHT*0.9)//2), window_size=(WINDOW_WIDTH*0.9, WINDOW_HEIGHT*0.9))) # Create the new sheet button
         
-        self.clear_cache_button: CTk.CTkButton = create_button(master=self, text="Clear Cache",
-                                                                    button_position=(WINDOW_WIDTH//2+150, WINDOW_HEIGHT//2+200),
-                                                                    button_size=(100, 50),
-                                                                    text_color='white', corner_radius=10, hover=True,
-                                                                    command=self.ydk_parser.clear_cache) # Create the clear cache button
+        self.import_sheet_button: CTk.CTkButton = create_button(master=self,
+                                                                text="Import Sheet",
+                                                                button_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2+200),
+                                                                button_size=(100, 50), 
+                                                                text_color='white', 
+                                                                corner_radius=10, 
+                                                                hover=True,
+                                                                command=self.import_sheet_dialogue) # Create the import sheet button
+        
+        self.clear_cache_button: CTk.CTkButton = create_button(master=self,
+                                                               text="Clear Cache",
+                                                               button_position=(WINDOW_WIDTH//2+150, WINDOW_HEIGHT//2+200),
+                                                               button_size=(100, 50),
+                                                               text_color='white', corner_radius=10, hover=True,
+                                                               command=lambda: asyncio_run(self.process_clear_cache_button_press())) # Create the clear cache button
         
         if clear_cache_button_logic() == False: self.clear_cache_button.configure(state='disabled') # Run the clear cache button logic (disable the button if there is no cache)
 
@@ -112,31 +121,55 @@ class App(CTk.CTk):
         canvas_color_label = CTk.CTkLabel(self.new_frame, text="Enter canvas color:")
         canvas_color_label.update_idletasks() # Update the label to get the correct dimensions
         canvas_color_label.place(x=window_size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2, y=250)
-        canvas_color_entry = CTk.CTkEntry(self.new_frame, width=75, height=25, font=("Helvetica", 14), textvariable=StringVar(value="#FFFFFF"), justify="center")
+        canvas_color_entry = CTk.CTkEntry(self.new_frame, width=75, height=25, font=("Helvetica", 14), textvariable=StringVar(value=DEFAULT_COLORS["CANVAS"]), justify="center")
         canvas_color_entry.place(x=window_size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + canvas_color_label.winfo_reqwidth() + 5, y=250)
-        create_button(master=self.new_frame, text="Get from picker", button_position=(window_size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + canvas_color_label.winfo_reqwidth() + canvas_color_entry.winfo_reqwidth() + 25, 250),
-                                                 button_size=(100, 25), command=lambda: canvas_color_entry.configure(textvariable=StringVar(value=color_picker.get().upper())), 
-                                                 text_color='white', corner_radius=10, hover=True, fg_color="#565656") # Create a button to get the color from the color picker
+        create_button(master=self.new_frame, 
+                      text="Get from picker", 
+                      button_position=(window_size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + canvas_color_label.winfo_reqwidth() + canvas_color_entry.winfo_reqwidth() + 25, 250),
+                      button_size=(100, 25), 
+                      command=lambda: canvas_color_entry.configure(textvariable=StringVar(value=color_picker.get().upper())), 
+                      text_color='white', 
+                      corner_radius=10, 
+                      hover=True, 
+                      fg_color="#565656") # Create a button to get the color from the color picker
 
         #Create entry for arrow color TODO optimize this code by writing a function similar to create_button or create_img
         arrow_color_label = CTk.CTkLabel(self.new_frame, text="Enter arrow color:")
         arrow_color_label.update_idletasks() # Update the label to get the correct dimensions
         arrow_color_label.place(x=window_size[0]//2-sheet_name_entry.winfo_reqwidth()//2, y=290)
-        arrow_color_entry = CTk.CTkEntry(self.new_frame, width=75, height=25, font=("Helvetica", 14), textvariable=StringVar(value="#000000"), justify="center")
+        arrow_color_entry = CTk.CTkEntry(self.new_frame, width=75, height=25, font=("Helvetica", 14), textvariable=StringVar(value=DEFAULT_COLORS["ARROW"]), justify="center")
         arrow_color_entry.place(x=window_size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + arrow_color_label.winfo_reqwidth() + 5, y=290)
-        create_button(master=self.new_frame, text="Get from picker", button_position=(window_size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + arrow_color_label.winfo_reqwidth() + arrow_color_entry.winfo_reqwidth() + 25, 290),
-                            button_size=(100, 25), command=lambda: arrow_color_entry.configure(textvariable=StringVar(value=color_picker.get().upper())), text_color='white', 
-                            corner_radius=10, hover=True, fg_color="#565656") # Create a button to get the color from the color picker
+        create_button(master=self.new_frame, 
+                      text="Get from picker", 
+                      button_position=(window_size[0] // 2 - sheet_name_entry.winfo_reqwidth() // 2 + arrow_color_label.winfo_reqwidth() + arrow_color_entry.winfo_reqwidth() + 25, 290),
+                      button_size=(100, 25), 
+                      command=lambda: arrow_color_entry.configure(textvariable=StringVar(value=color_picker.get().upper())), 
+                      text_color='white', 
+                      corner_radius=10, 
+                      hover=True, 
+                      fg_color="#565656") # Create a button to get the color from the color picker
 
         #Create a button to close the window
-        close_button = create_button(master=self.new_frame, text="Close", button_position=(window_size[0]//2-50, window_size[1]-120), 
-                                          button_size=(100, 50), command=self.new_frame.destroy, text_color='white', hover=True, fg_color="#565656", corner_radius=10) # Create a close button
+        # (assigning it to a variable is not necessary since it is not used outside of this function and can be destroyed with [child.destroy() for child in self.new_frame.winfo_children()])
+        create_button(master=self.new_frame, 
+                      text="Close", button_position=(window_size[0]//2-50, window_size[1]-120), 
+                      button_size=(100, 50), 
+                      command=self.new_frame.destroy, 
+                      text_color='white', 
+                      hover=True, 
+                      fg_color="#565656", 
+                      corner_radius=10)
 
-        # Create a button to submit the input
-        submit_button = create_button(master=self.new_frame, text="Submit", button_position=(window_size[0]//2-50, window_size[1]-60), button_size=(100, 50), 
-                                           command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), crop_images=crop_images.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get()), 
-                                           text_color='white', hover=True, fg_color="#565656", corner_radius=10) # Create a submit button
-
+        # Create a button to submit the input 
+        # (assigning it to a variable is not necessary since it is not used outside of this function and can be destroyed with [child.destroy() for child in self.new_frame.winfo_children()])
+        create_button(master=self.new_frame, 
+                      text="Submit", button_position=(window_size[0]//2-50, window_size[1]-60), button_size=(100, 50), 
+                      command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), crop_images=crop_images.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get()), 
+                      text_color='white', 
+                      hover=True, 
+                      fg_color="#565656", 
+                      corner_radius=10)
+        
     def process_new_sheet_input(self, sheet_name: str, import_ydk: str, crop_images: str, canvas_color: str, arrow_color: str) -> None:
         """
         Process the input from the new sheet settings window.
@@ -149,31 +182,37 @@ class App(CTk.CTk):
             arrow_color (str): The color of the arrows.
         """
 
-        self.log_handler.log(type="INFO", message=f"Created new sheet with name: {sheet_name}.") # Log the creation of a new sheet
+        # Setter functions for the canvas handler
+
         self.canvas_handler.set_root_window(root_window=self) # Set the root window of the canvas handler
+
+        if crop_images: self.canvas_handler.use_cropped_images = True # Set the canvas handler to use cropped images if the switch is on
+
+        if sheet_name != "": self.canvas_handler.sheet_name = sheet_name # If the user entered a sheet name, set the sheet name
+
+        self.canvas_handler.set_canvas_color(color=canvas_color) # Set the canvas color
+        self.canvas_handler.set_arrow_color(color=arrow_color)
+
+        # Handle ydk import if user selected to import ydk
 
         if import_ydk: # If the ydk import switch is on
             ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
             card_ids, card_data, card_img_paths = self.ydk_parser.read_ydk(ydk_path) # Load the ydk file
             
             # Pass all the cached images file system paths to the canvas handler
-            for img_type_paths in card_img_paths:
-                for img_path in img_type_paths:
-                    self.canvas_handler.add_image_to_list(img_path) # Add the card images to the canvas handler
+            [self.canvas_handler.add_image_to_list(img_path) for img_type_paths in card_img_paths for img_path in img_type_paths]
 
-        self.canvas_handler.set_canvas_color(color=canvas_color) # Set the canvas color
-        self.canvas_handler.set_arrow_color(color=arrow_color)
-
+        # Destroy the widgets in the new sheet window
         [child.destroy() for child in self.new_frame.winfo_children()] # Destroy all the widgets in the window
         self.new_frame.destroy() # Destroy the frame
 
-        # Destroy the widgets in the main window
         self.main_logo_label.destroy()
         self.new_sheet_button.destroy()
         self.import_sheet_button.destroy()
         self.clear_cache_button.destroy()
 
-        self.canvas_handler.show() # Show the canvas
+        # Show the canvas window
+        asyncio_run(self.canvas_handler.show()) # Show the canvas window 
 
     def import_sheet_dialogue(self) -> None:
         """
@@ -182,6 +221,21 @@ class App(CTk.CTk):
 
         file_path = filedialog.askopenfilename(title="Select combo sheet", filetypes=[("Combo sheet files", "*.ycs")]) # Open the file dialog to select a combo sheet TODO: implement this feature
 
+    async def process_clear_cache_button_press(self) -> None:
+        """
+        Clears all the cache and then disables the clear cache button.
+
+        params:
+            None
+        raises:
+            None
+        returns:
+            None
+        """
+
+        await self.ydk_parser.clear_cache() # Clear the cache
+        self.clear_cache_button.configure(state='disabled') # Disable the clear cache button
+        
 if __name__ == "__main__":
     app = App()
     app.mainloop()

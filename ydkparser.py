@@ -21,7 +21,9 @@ class YDKParser:
         returns:
             tuple[list[list[int], list[int], list[int]], list[list[dict], list[dict], list[dict]]]: The card ids and card data. The first list contains the card ids, the second list contains the card data. The first list contains the main deck, the second list contains the extra deck, the third list contains the side deck.
         """        
-        
+
+        asyncio_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
+
         card_ids_output: list[list[int], list[int], list[int]] = [[], [], []] # main, extra, side
         card_data_output: list[list[dict], list[dict], list[dict]] = [[], [], []] # main, extra, side
         card_img_paths: list[list[str, str, str]] = [[], [], []] # This list will contain all the card image paths (full, small, cropped)
@@ -63,12 +65,12 @@ class YDKParser:
             f.close()
 
         #Cache the images asynchronously
-        asyncio.run(self.cache_data(card_imgs_urls, card_img_paths, card_data_output))
+        asyncio_loop.run_in_executor(self.cache_data(card_imgs_urls, card_img_paths, card_data_output))
 
-        self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}.")
+        # Log that the ydk file has been read
+        asyncio_loop.run_in_executor(self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}."))
 
         return card_ids_output, card_data_output, card_img_paths
-
 
     def write_ydk(self, ydk_file, ydk): # TODO implement ydk writing
         raise NotImplementedError
@@ -86,7 +88,7 @@ class YDKParser:
             None
         """
 
-        semaphore = asyncio.Semaphore(10) # create a semaphore to limit the number of concurrent requests to 20
+        semaphore = asyncio.Semaphore(20) # create a semaphore to limit the number of concurrent requests to 20
         img_tasks = [self.cache_img(url, card_img_paths_list, semaphore) for urls in card_imgs_urls for url in urls] # create a list of tasks to cache the images
         json_tasks = [self.cache_json(card_data, semaphore) for deck_type in card_data_output for card_data in deck_type] # create a list of tasks to cache the card data
         
@@ -97,12 +99,14 @@ class YDKParser:
             batch = tasks[i:i + task_batch_size]
             await asyncio.gather(*batch)  # run the tasks asynchronously in batches
 
-    async def cache_img(self, url, card_img_paths_list, semaphore): # TODO update docstring
+    async def cache_img(self, url, card_img_paths_list, semaphore):
         """
         Caches an image from a URL.
 
         params:
             url: str The URL of the image to cache.
+            card_img_paths_list: list[list[str, str, str]] A list of lists containing the image paths for the full, small and cropped images.
+            semaphore: asyncio.Semaphore The semaphore to limit the number of concurrent logic streams.
         raises:
             None
         returns:
@@ -126,29 +130,43 @@ class YDKParser:
                         if not os.path.exists(final_img_path):
                             with open(final_img_path, 'wb') as f:
                                 f.write(await response.read())
-                                self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
+                                
                                 # add the image path to the list of image paths based on the image type (used later in canvashandler to create pillow Image objects)
                                 if img_type == "cards": card_img_paths_list[0].append(final_img_path)
                                 elif img_type == "cards_small": card_img_paths_list[1].append(final_img_path)
                                 elif img_type == "cards_cropped": card_img_paths_list[2].append(final_img_path)
-                    
-                    else: self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
+                        
+                            # No need to explicitly close the file as it is handled by the context manager
 
-    async def cache_json(self, card_data, semaphore): # TODO update docstring
+                            await self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
+                    else:
+                        await self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
+
+    async def cache_json(self, card_data, semaphore):
         """
         Caches card data to a json file named after the card id.
+
+        params:
+            card_data: dict The card data to cache.
+            semaphore: asyncio.Semaphore The semaphore to limit the number of concurrent logic streams.
+        raises:
+            None
+        returns:
+            None
         """
 
         async with semaphore:
             # Cache the card data
             card_id: str = card_data["data"][0]["id"] # get the card id
             card_data_path = os.path.join("data", "card_data", f"{card_id}.json") # create the final card data path
-            os.makedirs(os.path.dirname(card_data_path), exist_ok=True) # create the directories if they don't exist
-            with open(card_data_path, "w") as json_file: # write the card data to the file
-                json.dump(card_data, json_file, indent=4) # indent the json file for better readability
-            json_file.close() # close the file
 
-    def clear_cache(self):
+            if not os.path.exists(card_data_path): # if the card data is not cached
+                with open(card_data_path, "w") as json_file: # write the card data to the file
+                    json.dump(card_data, json_file, indent=4) # indent the json file for better readability
+                json_file.close() # close the file
+                await self.log_handler.log(type="INFO", message=f"Cached card data for card id {card_id}")
+
+    async def clear_cache(self):
         """
         Clears the cache.
 
@@ -160,6 +178,7 @@ class YDKParser:
             None
         """
 
+        # Delete images
         BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
         for img_type in ["cards", "cards_small", "cards_cropped"]:
             img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type)
@@ -168,10 +187,11 @@ class YDKParser:
                 if final_path.endswith(".jpg"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
                     os.remove(final_path)
 
+        # Delete json files
         BASE_CACHED_CARD_DATA_PATH: str = "data/card_data/"
         for card_data in os.listdir(BASE_CACHED_CARD_DATA_PATH):
             final_path = os.path.join(BASE_CACHED_CARD_DATA_PATH, card_data)
             if final_path.endswith(".json"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
                 os.remove(final_path)
 
-        self.log_handler.log(type="INFO", message="Cleared all cache.")
+        await self.log_handler.log(type="INFO", message="Cleared all cache.")

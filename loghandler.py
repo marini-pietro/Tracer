@@ -1,4 +1,4 @@
-from datetime import datetime
+import logging
 
 class LogHandler:
     def __init__(self):
@@ -6,9 +6,14 @@ class LogHandler:
         Initializes the log handler.
         """
         self.log_file_path = "log.txt"
-        self.file = open(self.log_file_path, "a") # open the log file in append mode (create it if it doesn't exist)
+        self.logger = logging.getLogger("async_logger")
+        self.logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(self.log_file_path)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(handler)
+        self.handler = handler
 
-    def log(self, message, type):
+    async def log(self, message, type):
         """
         Logs a message to the log file.
         
@@ -20,9 +25,14 @@ class LogHandler:
         returns:
             None
         """
-
-        timestamp: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self.file.write(f"[{type}] {timestamp} -> {message}\n")
+        if type == "INFO":
+            self.logger.info(message)
+        elif type == "ERROR":
+            self.logger.error(message)
+        elif type == "WARNING":
+            self.logger.warning(message)
+        elif type == "DEBUG":
+            self.logger.debug(message)
 
     def clear(self):
         """
@@ -36,14 +46,15 @@ class LogHandler:
             OSError if file procedures fail
         """
         try:
-            self.file.close() # close the file
-            self.file = open(self.log_file_path, "w") # open the file in write mode (clears it) 
-            self.file.close() # close the file
-            self.file = open(self.log_file_path, "a") # open the file in append mode back again
-        except OSError as e:
-            print(f"Error clearing log file: {e}")
-        
-    def close(self): #TODO implement close on window close
+            self.handler.close()  # Close the current handler
+            self.logger.removeHandler(self.handler)  # Remove the handler from the logger
+            with open(self.log_file_path, "w") as file:
+                file.truncate(0)  # Clear the file contents
+            self.logger.addHandler(self.handler)  # Re-add the handler to the logger
+        except OSError as ex:
+            print(f"Error clearing log file: {ex}")
+
+    def close(self):
         """
         Closes the log file.
 
@@ -54,4 +65,7 @@ class LogHandler:
         returns:
             None
         """
-        self.file.close()
+        handlers = self.logger.handlers[:]
+        for handler in handlers:
+            handler.close()
+            self.logger.removeHandler(handler)
