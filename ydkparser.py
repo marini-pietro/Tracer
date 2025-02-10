@@ -45,13 +45,6 @@ class YDKParser:
                 
                 if not os.path.exists(os.path.join("data", "card_data", f"{line}.json")): # If the card data is not cached, request it from the API
                     card_data: dict = self.api_handler.request_card_data(search_value="id", search_target=line)
-                    
-                    # Cache the card data
-                    card_data_path = os.path.join("data", "card_data", f"{line}.json")
-                    os.makedirs(os.path.dirname(card_data_path), exist_ok=True)
-                    with open(card_data_path, "w") as json_file:
-                        json.dump(card_data, json_file, indent=4)
-                    json_file.close()
 
                 else: # If the card data is cached, read it from the file
                     with open(os.path.join("data", "card_data", f"{line}.json"), "r") as json_file:
@@ -70,7 +63,7 @@ class YDKParser:
             f.close()
 
         #Cache the images asynchronously
-        asyncio.run(self.cache_images(card_imgs_urls, card_img_paths))
+        asyncio.run(self.cache_data(card_imgs_urls, card_img_paths, card_data_output))
 
         self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}.")
 
@@ -80,7 +73,7 @@ class YDKParser:
     def write_ydk(self, ydk_file, ydk): # TODO implement ydk writing
         raise NotImplementedError
 
-    async def cache_images(self, card_imgs_urls, card_img_paths_list):
+    async def cache_data(self, card_imgs_urls, card_img_paths_list, card_data_output): # TODO update docstring
         """
         Caches images from a list of card image URLs.
 
@@ -93,10 +86,18 @@ class YDKParser:
             None
         """
 
-        tasks = [self.cache_img(url, card_img_paths_list) for urls in card_imgs_urls for url in urls] # create a list of tasks to cache the images
-        await asyncio.gather(*tasks)
+        semaphore = asyncio.Semaphore(10) # create a semaphore to limit the number of concurrent requests to 20
+        img_tasks = [self.cache_img(url, card_img_paths_list, semaphore) for urls in card_imgs_urls for url in urls] # create a list of tasks to cache the images
+        json_tasks = [self.cache_json(card_data, semaphore) for deck_type in card_data_output for card_data in deck_type] # create a list of tasks to cache the card data
+        
+        tasks = img_tasks + json_tasks
+        task_batch_size = 20
 
-    async def cache_img(self, url, card_img_paths_list):
+        for i in range(0, len(tasks), task_batch_size):
+            batch = tasks[i:i + task_batch_size]
+            await asyncio.gather(*batch)  # run the tasks asynchronously in batches
+
+    async def cache_img(self, url, card_img_paths_list, semaphore): # TODO update docstring
         """
         Caches an image from a URL.
 
@@ -108,28 +109,44 @@ class YDKParser:
             None
         """
 
-        BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
-        url_splits: list[str] = url.split("/")
+        async with semaphore: # limit the number of concurrent threads to 20
 
-        card_id: str = url_splits[-1][:-4] # get everything except the last 4 characters
-        img_type: str = url_splits[-2] # get the image type (e.g. cards, cards_small, cards_cropped)
+            BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
+            url_splits: list[str] = url.split("/")
 
-        final_img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type, card_id + ".jpg") # create the final image path
+            card_id: str = url_splits[-1][:-4] # get everything except the last 4 characters
+            img_type: str = url_splits[-2] # get the image type (e.g. cards, cards_small, cards_cropped)
 
-        # Download the image
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    if not os.path.exists(final_img_path):
-                        with open(final_img_path, 'wb') as f:
-                            f.write(await response.read())
-                            self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
-                            # add the image path to the list of image paths based on the image type (used later in canvashandler to create pillow Image objects)
-                            if img_type == "cards": card_img_paths_list[0].append(final_img_path)
-                            elif img_type == "cards_small": card_img_paths_list[1].append(final_img_path)
-                            elif img_type == "cards_cropped": card_img_paths_list[2].append(final_img_path)
-                
-                else: self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
+            final_img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type, card_id + ".jpg") # create the final image path
+
+            # Download the image
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        if not os.path.exists(final_img_path):
+                            with open(final_img_path, 'wb') as f:
+                                f.write(await response.read())
+                                self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
+                                # add the image path to the list of image paths based on the image type (used later in canvashandler to create pillow Image objects)
+                                if img_type == "cards": card_img_paths_list[0].append(final_img_path)
+                                elif img_type == "cards_small": card_img_paths_list[1].append(final_img_path)
+                                elif img_type == "cards_cropped": card_img_paths_list[2].append(final_img_path)
+                    
+                    else: self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
+
+    async def cache_json(self, card_data, semaphore): # TODO update docstring
+        """
+        Caches card data to a json file named after the card id.
+        """
+
+        async with semaphore:
+            # Cache the card data
+            card_id: str = card_data["data"][0]["id"] # get the card id
+            card_data_path = os.path.join("data", "card_data", f"{card_id}.json") # create the final card data path
+            os.makedirs(os.path.dirname(card_data_path), exist_ok=True) # create the directories if they don't exist
+            with open(card_data_path, "w") as json_file: # write the card data to the file
+                json.dump(card_data, json_file, indent=4) # indent the json file for better readability
+            json_file.close() # close the file
 
     def clear_cache(self):
         """

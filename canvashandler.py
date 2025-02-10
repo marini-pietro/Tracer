@@ -266,6 +266,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         menu = tk.Menu(self.canvas, tearoff=0)
         menu.add_command(label="Add card image", command=lambda: self.add_image("data/img/card_back_1.png", scale=0.25, x=event.x, y=event.y))
         menu.add_command(label="Add arrow", command=lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
+        menu.add_command(label="Add text", command=lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
 
         # Show the menu at the mouse position
         menu.tk_popup(event.x_root, event.y_root)
