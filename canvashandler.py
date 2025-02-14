@@ -21,6 +21,7 @@ from datetime import datetime
 class CanvasHandler: #TODO add possibility to discard current canvas and return to main menu
     def __init__(self, 
                  log_handler,
+                 api_handler,
                  ydk_parser, 
                  root_window = None, 
                  sheet_name: str = None, 
@@ -29,7 +30,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         
         self.root_window = root_window
         if sheet_name is not None: self.sheet_name = sheet_name # Set the sheet name to the provided value
-        self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y%m%d')}" # Set the sheet name to the current date if no name is provided
+        self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y-%m-%d')}" # Set the sheet name to the current date if no name is provided
 
         # Create tabview widget and its tabs
         self.tabs = CTk.CTkTabview(self.root_window)
@@ -42,6 +43,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.scale: float = 1.0 # The scale of the canvas
         self.log_handler = log_handler 
         self.ydk_parser = ydk_parser
+        self.api_handler = api_handler
         self.ask_ydk_import_confirmation: bool = True # If True, the user will be asked for confirmation before importing a ydk file
         self.use_cropped_images: bool = False # If True, the cropped images will be used (only the art of the card will be displayed)
         self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0} # Data used for dragging items on the canvas
@@ -180,16 +182,35 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.card_view_tab_attribute_options = CTk.CTkOptionMenu(self.card_view_tab, values=attribute_options, fg_color="#333333", button_hover_color="#555555")
         
         self.card_view_tab_type_label = CTk.CTkLabel(self.card_view_tab, text="Type:", font=("Helvetica", 16))
-        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options)
+        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options, fg_color="#333333", button_hover_color="#555555")
 
-        #   | Search button
-        self.card_view_search_button = create_button(master=self.card_view_tab,
-                                                     type="text",
-                                                     command=self.search_cards,
-                                                     text="Search",
-                                                     fg_color="#555555",
-                                                     button_size=(100, 30),
+        #   | Search buttons
+        self.card_view_search_online_button = create_button(master = self.card_view_tab,
+                                                     type = "text",
+                                                     command = lambda: self.search_cards(online=True),
+                                                     text = "Search online",
+                                                     fg_color = "#555555",
+                                                     button_size = (100, 30),
+                                                     corner_radius=25,
                                                      should_be_placed=False)
+        self.card_view_search_online_button.configure(state = "disabled") # Disable the online search button by default
+
+        self.card_view_search_offline_button = create_button(master = self.card_view_tab,
+                                                             type = "text",
+                                                             command = lambda: self.search_cards(online=False),
+                                                             text = "Search offline",
+                                                             fg_color = "#555555",
+                                                             button_size = (100, 30),
+                                                             corner_radius=25,
+                                                             should_be_placed=False)
+        self.card_view_search_offline_button.configure(state = "disabled") # Disable the offline search button by default        
+
+        # | Bind events
+        self.card_view_tab_level_options.configure(command = lambda _: self.update_online_search_button_state())
+        self.card_view_tab_race_options.configure(command = lambda _: self.update_online_search_button_state())
+        self.card_view_tab_attribute_options.configure(command = lambda _: self.update_online_search_button_state())
+        self.card_view_tab_type_options.configure(command = lambda _: self.update_online_search_button_state())
+        self.card_view_tab_entry.bind("<KeyRelease>", self.update_online_search_button_state)
 
         # | Pack the widgets
         #   | Card preview frame
@@ -214,9 +235,6 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         self.card_view_tab_type_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
         self.card_view_tab_type_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
-        
-        # | Bind events
-        self.card_view_tab_entry.bind("<Return>", self.search_cards) # Bind the search_cards method to the return key
 
     # Event handling functions
 
@@ -401,7 +419,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.images = [[ ], [ ], [ ]] # Clear the images list
         [self.add_image_to_list(img_path) for img_path in card_img_paths] # Add the images to the list as pillow images
 
-    def search_cards(self):
+    def search_cards(self, online: bool = True) -> dict:
         """
         Searches for a cards based on the user's input and displays it on the card view tab.
         """
@@ -418,13 +436,17 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         # Remove the "Any" values from the search targets 
         # (e.g if name variable is equals to "Any" remove the "name" target from the search targets list)
         for target in search_targets_deep_copy:
-            if locals()[target] == "Any":
+            if locals()[target] == "Any" or locals()[target] == "": # Additional check for the entry because it returns an empty string if the user doesn't input anything
                 search_targets.remove(target)
 
         del search_targets_deep_copy # Delete the deep copy of the search targets list to free up memory
         
         search_data = {target: locals()[target] for target in search_targets} # Create a dictionary with the search targets and their values
-        print(search_data)
+
+        if online:
+            card_jsons = self.api_handler.request_card_data(search_data) # Search for the card based on the user's input
+        else:
+            raise NotImplementedError("Offline search is not implemented yet.")
 
     def on_close(self):
         """
@@ -464,6 +486,29 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         elif "cards" in image_path:
             self.images[0].append(Image.open(image_path))
 
+    def update_online_search_button_state(self):
+        """
+        Updates the state of the online search button based on the user's input.
+        """
+
+        if (self.card_view_tab_level_options.get() == "Any" and 
+            self.card_view_tab_race_options.get() == "Any" and
+            self.card_view_tab_attribute_options.get() == "Any" and
+            self.card_view_tab_type_options.get() == "Any" and
+            self.card_view_tab_entry.get() == ""):
+            self.card_view_search_button.configure(state="disabled")
+        else:
+            self.card_view_search_button.configure(state="normal")
+
+    def update_offline_search_button_state(self):
+        """
+        Updates the state of the offline search button based on the presence of cache.
+        """
+
+        if os.listdir("data/card_data") and os.listdir("data/img/cached_images/cards") and os.listdir("data/img/cached_images/cards_small") and os.listdir("data/img/cached_images/cards_cropped"):
+            self.card_view_search_offline_button.configure(state="normal")
+        else:
+            self.card_view_search_offline_button.configure(state="disabled")
 
     def set_canvas_color(self, color: str):
         """

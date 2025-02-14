@@ -19,10 +19,11 @@ class YDKParser:
             ydk_file: str The path to the ydk file.
 
         returns:
-            tuple[list[list[int], list[int], list[int]], list[list[dict], list[dict], list[dict]]]: The card ids and card data. The first list contains the card ids, the second list contains the card data. The first list contains the main deck, the second list contains the extra deck, the third list contains the side deck.
+            tuple[list[list[int], list[int], list[int]], list[list[dict], list[dict], list[dict]], list[list[str, str, str]]]: 
+            The card ids, card data, and card image paths. The first list contains the card ids, the second list contains the card data, 
+            and the third list contains the card image paths. The first list contains the main deck, the second list contains the extra deck, 
+            the third list contains the side deck.
         """        
-
-        asyncio_loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
         card_ids_output: list[list[int], list[int], list[int]] = [[], [], []] # main, extra, side
         card_data_output: list[list[dict], list[dict], list[dict]] = [[], [], []] # main, extra, side
@@ -31,7 +32,7 @@ class YDKParser:
 
         with open(ydk_file, "r") as f:
             for line in f:
-                line = line.strip() # remove leading and trailing whitespaces from the line (necessary for the following if statements) TODO look into this if this can be optimized
+                line = line.strip() # remove leading and trailing whitespaces from the line (necessary for the following if statements)
                 if line == "#main":
                     position = self.deck_positions["main"]
                     continue
@@ -46,12 +47,11 @@ class YDKParser:
                 card_ids_output[position].append(line) # add the card id to the list of card ids
                 
                 if not os.path.exists(os.path.join("data", "card_data", f"{line}.json")): # If the card data is not cached, request it from the API
-                    card_data: dict = self.api_handler.request_card_data(search_value="id", search_target=line)
+                    card_data: dict = self.api_handler.request_card_data(search_data={"id": line})
 
                 else: # If the card data is cached, read it from the file
                     with open(os.path.join("data", "card_data", f"{line}.json"), "r") as json_file:
                         card_data = json.load(json_file)
-                    json_file.close()
 
                 card_data_output[position].append(card_data) # add the card data to the list of card data
 
@@ -62,25 +62,25 @@ class YDKParser:
 
                 time.sleep(0.05) # sleep for 50 milliseconds to limit to 20 requests per second
 
-            f.close()
-
-        #Cache the images asynchronously
-        asyncio_loop.run_in_executor(self.cache_data(card_imgs_urls, card_img_paths, card_data_output))
+        # Cache the images asynchronously
+        asyncio.run(self.cache_data(card_imgs_urls, card_img_paths, card_data_output))
 
         # Log that the ydk file has been read
-        asyncio_loop.run_in_executor(self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}."))
+        asyncio.run(self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}."))
 
         return card_ids_output, card_data_output, card_img_paths
 
     def write_ydk(self, ydk_file, ydk): # TODO implement ydk writing
         raise NotImplementedError
 
-    async def cache_data(self, card_imgs_urls, card_img_paths_list, card_data_output): # TODO update docstring
+    async def cache_data(self, card_imgs_urls, card_img_paths_list, card_data_output):
         """
-        Caches images from a list of card image URLs.
+        Caches images and JSON data from a list of card image URLs and card data.
 
         params:
-            card_imgs_urls: list[list[str, str, str]] A list of card image URLs. Each sublist contains the URLs for the full image, the small image and the cropped image.
+            card_imgs_urls: list[list[str, str, str]] A list of card image URLs. Each sublist contains the URLs for the full image, the small image, and the cropped image.
+            card_img_paths_list: list[list[str, str, str]] A list of lists containing the image paths for the full, small, and cropped images.
+            card_data_output: list[list[dict], list[dict], list[dict]] A list of card data dictionaries.
 
         raises:
             None
@@ -105,7 +105,7 @@ class YDKParser:
 
         params:
             url: str The URL of the image to cache.
-            card_img_paths_list: list[list[str, str, str]] A list of lists containing the image paths for the full, small and cropped images.
+            card_img_paths_list: list[list[str, str, str]] A list of lists containing the image paths for the full, small, and cropped images.
             semaphore: asyncio.Semaphore The semaphore to limit the number of concurrent logic streams.
         raises:
             None
@@ -136,15 +136,13 @@ class YDKParser:
                                 elif img_type == "cards_small": card_img_paths_list[1].append(final_img_path)
                                 elif img_type == "cards_cropped": card_img_paths_list[2].append(final_img_path)
                         
-                            # No need to explicitly close the file as it is handled by the context manager
-
                             await self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
                     else:
                         await self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
 
     async def cache_json(self, card_data, semaphore):
         """
-        Caches card data to a json file named after the card id.
+        Caches card data to a JSON file named after the card id.
 
         params:
             card_data: dict The card data to cache.
@@ -156,14 +154,12 @@ class YDKParser:
         """
 
         async with semaphore:
-            # Cache the card data
             card_id: str = card_data["data"][0]["id"] # get the card id
             card_data_path = os.path.join("data", "card_data", f"{card_id}.json") # create the final card data path
 
             if not os.path.exists(card_data_path): # if the card data is not cached
                 with open(card_data_path, "w") as json_file: # write the card data to the file
-                    json.dump(card_data, json_file, indent=4) # indent the json file for better readability
-                json_file.close() # close the file
+                    json.dump(card_data, json_file, indent=4) # indent the JSON file for better readability
                 await self.log_handler.log(type="INFO", message=f"Cached card data for card id {card_id}")
 
     async def clear_cache(self):
@@ -184,14 +180,14 @@ class YDKParser:
             img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type)
             for img in os.listdir(img_path):
                 final_path = os.path.join(img_path, img)
-                if final_path.endswith(".jpg"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
+                if final_path.endswith(".jpg"): # Additional checks to avoid deleting .gitkeep files
                     os.remove(final_path)
 
-        # Delete json files
+        # Delete JSON files
         BASE_CACHED_CARD_DATA_PATH: str = "data/card_data/"
         for card_data in os.listdir(BASE_CACHED_CARD_DATA_PATH):
             final_path = os.path.join(BASE_CACHED_CARD_DATA_PATH, card_data)
-            if final_path.endswith(".json"): #Additional checks to avoid deleting .gitkeep files TODO remove this for deployment
+            if final_path.endswith(".json"): # Additional checks to avoid deleting .gitkeep files
                 os.remove(final_path)
 
         await self.log_handler.log(type="INFO", message="Cleared all cache.")

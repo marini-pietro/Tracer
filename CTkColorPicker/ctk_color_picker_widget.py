@@ -58,7 +58,8 @@ class CTkColorPicker(customtkinter.CTkFrame):
 
         # draw the images on the canvas
         self.canvas.create_image(self.image_dimension/2, self.image_dimension/2, image=self.wheel) # draw the wheel
-        self.set_initial_color(initial_hex_color) # set the initial color of the widget on the color wheel
+        #self.set_initial_color(initial_hex_color) # set the initial color of the widget on the color wheel (still in beta stage cannot find all colors accurately)
+        self.canvas.create_image(self.image_dimension/2, self.image_dimension/2, image=self.target) # draw the target
         
         # create the slider
         self.brightness_slider_value: customtkinter.IntVar = customtkinter.IntVar() 
@@ -72,7 +73,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
         
         # create the entry widget
         self.entry: customtkinter.CTkEntry = customtkinter.CTkEntry(master=self, text_color="#000000", width=10, fg_color=self.hex_color,
-                            corner_radius=self.corner_radius, textvariable=tkinter.StringVar(value=self.hex_color))
+                            corner_radius=self.corner_radius, textvariable=tkinter.StringVar(value=self.hex_color.upper())) # create the entry widget
         self.entry.bind("<KeyRelease>", self.on_key_released) # bind key release event to the label
         self.entry.configure(validate='key', validatecommand=(master.register(self.validate_hex_entry), '%P')) # add the validation command to the entry
 
@@ -191,7 +192,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
         #Update the hex color
         self.hex_color = "#{:02x}{:02x}{:02x}".format(*self.rgb_color)
 
-        self.entry.configure(textvariable=tkinter.StringVar(value=self.hex_color)) #Update the text of the entry
+        self.entry.configure(textvariable=tkinter.StringVar(value=self.hex_color.upper())) #Update the text of the entry
         self.entry.configure(fg_color=self.hex_color) # update the text color of the label
 
         self.slider.configure(progress_color=self.hex_color) # update the progress color of the slider
@@ -271,7 +272,7 @@ class CTkColorPicker(customtkinter.CTkFrame):
         self.slider.configure(progress_color=self.hex_color) # update the progress color of the slider
         self.entry.configure(fg_color=self.hex_color)  # update the text color of the label
         
-        label_text = tkinter.StringVar(value=self.hex_color)
+        label_text = tkinter.StringVar(value=self.hex_color.upper())
         self.entry.configure(textvariable=label_text) # update the text of the label
         
         # change text color based on brightness

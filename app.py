@@ -41,7 +41,7 @@ class App(CTk.CTk):
         self.log_handler = LogHandler()
         self.api_handler = APIHandler(log_handler=self.log_handler)
         self.ydk_parser = YDKParser(api_handler=self.api_handler, log_handler=self.log_handler)
-        self.canvas_handler = CanvasHandler(log_handler=self.log_handler, ydk_parser=self.ydk_parser)
+        self.canvas_handler = CanvasHandler(log_handler=self.log_handler, ydk_parser=self.ydk_parser, api_handler=self.api_handler)
 
         # Set centered window title and icon
         self.title("Tracer") # TODO center the title string
