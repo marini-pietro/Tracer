@@ -83,6 +83,7 @@ def create_button(master,
                   hover_color: tuple[int, int, int] | str = None, 
                   border_color: tuple[int, int, int] | str = None, 
                   should_be_placed: bool = True) -> CTk.CTkButton:
+    
     """
     Creates a button in the window with the given text, position, size and command.
 

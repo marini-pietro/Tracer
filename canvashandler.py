@@ -1,13 +1,15 @@
 try:
+    import os
     import customtkinter as CTk
+    from CTkMessagebox import CTkMessagebox
     import tkinter as tk
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
 except ImportError:
     import os
-    os.system("pip install customtkinter tkinter pillow")
-    del os
+    os.system("pip install -r requirements.txt")
     import customtkinter as CTk
+    from CTkMessagebox import CTkMessagebox
     import tkinter as tk
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
@@ -15,17 +17,17 @@ except ImportError:
 from config import keybinds, VERSION, DEFAULT_COLORS
 from utils import create_img, create_button
 from datetime import datetime
-import asyncio
 
 class CanvasHandler: #TODO add possibility to discard current canvas and return to main menu
-    def __init__(self, log_handler, 
+    def __init__(self, 
+                 log_handler,
+                 ydk_parser, 
                  root_window = None, 
                  sheet_name: str = None, 
                  canvas_color: str = DEFAULT_COLORS["ARROW"], 
                  arrow_color: str = DEFAULT_COLORS["CANVAS"]):
         
         self.root_window = root_window
-        self.log_handler = log_handler
         if sheet_name is not None: self.sheet_name = sheet_name # Set the sheet name to the provided value
         self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y%m%d')}" # Set the sheet name to the current date if no name is provided
 
@@ -38,6 +40,9 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         # Initialize variables
         self.scale: float = 1.0 # The scale of the canvas
+        self.log_handler = log_handler 
+        self.ydk_parser = ydk_parser
+        self.ask_ydk_import_confirmation: bool = True # If True, the user will be asked for confirmation before importing a ydk file
         self.use_cropped_images: bool = False # If True, the cropped images will be used (only the art of the card will be displayed)
         self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0} # Data used for dragging items on the canvas
         self.images: list[Image.Image] = [[ ], [ ], [ ]] # full size, small size, cropped size
@@ -77,7 +82,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         
         self.cards_tab_import_button = create_button(master=self.cards_details_frame,
                                                      type="text",
-                                                     command=lambda: self.import_ydk_as_pillow_images(filedialog.askopenfilename(filetypes=[("YDK files", "*.ydk"), ("All files", "*.*")])),
+                                                     command=self.cards_tab_import_ydk_button,
                                                      text="Import from YDK",
                                                      button_size=(30, 10),
                                                      should_be_placed=False)
@@ -153,11 +158,11 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
                                                        scale=0.30, should_be_placed=False)
         self.card_view_tab_preview_image_text = CTk.CTkLabel(self.card_view_tab_frame, text="Lorem Ipsum", font=("Helvetica", 16))
         
-        # | Label and entry
+        #   | Label and entry
         self.card_view_tab_label = CTk.CTkLabel(self.card_view_tab, text="Enter name of card:", font=("Helvetica", 16))
         self.card_view_tab_entry = CTk.CTkEntry(self.card_view_tab, font=("Helvetica", 16))
 
-        # | Option menus and relative labels
+        #   | Option menus and relative labels
         level_options: list[str] = ["Any", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]
         race_options: list[str] = ["Any", "Aqua", "Beast", "Beast-Warrior", "Cyberse", "Dinosaur", "Divine-Beast", "Dragon",
                         "Fairy", "Fiend", "Fish", "Insect", "Machine", "Plant", "Psychic", "Pyro", "Reptile", "Rock", 
@@ -175,7 +180,16 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.card_view_tab_attribute_options = CTk.CTkOptionMenu(self.card_view_tab, values=attribute_options, fg_color="#333333", button_hover_color="#555555")
         
         self.card_view_tab_type_label = CTk.CTkLabel(self.card_view_tab, text="Type:", font=("Helvetica", 16))
-        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options, fg_color="#333333", button_hover_color="#555555")
+        self.card_view_tab_type_options = CTk.CTkOptionMenu(self.card_view_tab, values=type_options)
+
+        #   | Search button
+        self.card_view_search_button = create_button(master=self.card_view_tab,
+                                                     type="text",
+                                                     command=self.search_cards,
+                                                     text="Search",
+                                                     fg_color="#555555",
+                                                     button_size=(100, 30),
+                                                     should_be_placed=False)
 
         # | Pack the widgets
         #   | Card preview frame
@@ -184,6 +198,8 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.card_view_tab_preview_image_text.pack(side=tk.TOP, fill=tk.BOTH, padx=50, pady=50) # Pack the text to the top
 
         #   | Search filters
+        self.card_view_search_button.pack(side=tk.TOP, anchor='nw', padx=10, pady=10)  # Pack the button to the top left corner
+
         self.card_view_tab_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the label to the top
         self.card_view_tab_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the entry to the top
 
@@ -198,6 +214,9 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         self.card_view_tab_type_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
         self.card_view_tab_type_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
+        
+        # | Bind events
+        self.card_view_tab_entry.bind("<Return>", self.search_cards) # Bind the search_cards method to the return key
 
     # Event handling functions
 
@@ -351,6 +370,62 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.canvas.pack(fill=tk.BOTH, expand=True)                                                   
         self.tabs.pack(fill=tk.BOTH, expand=True)
 
+    def cards_tab_import_ydk_button(self) -> list[Image.Image]:
+        """
+        Imports the images from a YDK file and returns them as Pillow Image objects.
+
+
+        params: ydk_file_path: str - The path to the YDK file.
+        return: list[Image.Image] - A list of Pillow Image objects.
+        """
+
+        if self.ask_ydk_import_confirmation:
+            msg = CTkMessagebox(master=self.root_window, 
+                                title="Import ydk file?", 
+                                message="Are you sure you want to import a ydk file?\n All current added cards will be lost.",
+                                icon="question", 
+                                options=["Yes and don't ask again", "Yes", "Cancel"],
+                                justify="center")
+            
+            if os.name=="nt": msg.configure(corner_radius=25) # Set the corner radius of the messagebox to 25 if the OS is Windows (custom corner radius is not possible in Linux check docs)
+            
+            response = msg.get()
+            if response == "No": return
+            if response == "Yes and don't ask again": self.ask_ydk_import_confirmation = False
+            
+
+        ydk_file_path = filedialog.askopenfilename(filetypes=[("YDK files", "*.ydk"), ("All files", "*.*")])
+
+        card_ids, card_data, card_img_paths = self.ydk_parser.read_ydk(ydk_file_path)
+
+        self.images = [[ ], [ ], [ ]] # Clear the images list
+        [self.add_image_to_list(img_path) for img_path in card_img_paths] # Add the images to the list as pillow images
+
+    def search_cards(self):
+        """
+        Searches for a cards based on the user's input and displays it on the card view tab.
+        """
+
+        name = self.card_view_tab_entry.get()
+        level = self.card_view_tab_level_options.get()
+        race = self.card_view_tab_race_options.get()
+        attribute = self.card_view_tab_attribute_options.get()
+        type = self.card_view_tab_type_options.get()
+
+        search_targets: list[str] = ["name", "level", "race", "attribute", "type"]
+        search_targets_deep_copy = search_targets.copy() # Deep copy the search targets list to avoid errors when removing elements from the original list while iterating over it
+
+        # Remove the "Any" values from the search targets 
+        # (e.g if name variable is equals to "Any" remove the "name" target from the search targets list)
+        for target in search_targets_deep_copy:
+            if locals()[target] == "Any":
+                search_targets.remove(target)
+
+        del search_targets_deep_copy # Delete the deep copy of the search targets list to free up memory
+        
+        search_data = {target: locals()[target] for target in search_targets} # Create a dictionary with the search targets and their values
+        print(search_data)
+
     def on_close(self):
         """
         Called when the window is closed.
@@ -359,20 +434,6 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
             for child in tab.winfo_children():
                 child.destroy()
         self.root_window.destroy()
-
-    def import_ydk_as_pillow_images(self, ydk_file_path) -> list[Image.Image]:
-        """
-        Imports the images from a YDK file and returns them as Pillow Image objects.
-
-        params: ydk_file_path: str - The path to the YDK file.
-        return: list[Image.Image] - A list of Pillow Image objects.
-        """
-
-        card_ids, card_data, card_img_paths = self.log_handler.read_ydk(ydk_file_path)
-
-        self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file_path}.")
-
-        return [Image.open(img_path) for img_path in card_img_paths]
 
     # Setters
 

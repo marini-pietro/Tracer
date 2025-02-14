@@ -3,4 +3,5 @@ requests
 tk
 tcl
 customtkinter
+CTkMessagebox
 aiohttp

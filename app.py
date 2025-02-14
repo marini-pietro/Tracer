@@ -41,7 +41,7 @@ class App(CTk.CTk):
         self.log_handler = LogHandler()
         self.api_handler = APIHandler(log_handler=self.log_handler)
         self.ydk_parser = YDKParser(api_handler=self.api_handler, log_handler=self.log_handler)
-        self.canvas_handler = CanvasHandler(log_handler=self.log_handler)
+        self.canvas_handler = CanvasHandler(log_handler=self.log_handler, ydk_parser=self.ydk_parser)
 
         # Set centered window title and icon
         self.title("Tracer") # TODO center the title string
@@ -219,7 +219,8 @@ class App(CTk.CTk):
         Opens a file dialog to import a combo sheet.
         """
 
-        file_path = filedialog.askopenfilename(title="Select combo sheet", filetypes=[("Combo sheet files", "*.ycs")]) # Open the file dialog to select a combo sheet TODO: implement this feature
+        file_path = filedialog.askopenfilename(title="Select combo sheet", filetypes=[("Combo sheet files", "*.json")]) # Open the file dialog to select a combo sheet TODO: implement this feature
+        # Since i decided to use generic json some validation is needed to check if the file is properly formatted
 
     async def process_clear_cache_button_press(self) -> None:
         """

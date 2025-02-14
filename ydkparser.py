@@ -2,7 +2,7 @@ try:
     import os, aiohttp, asyncio, time, json
 except ImportError:
     import os
-    os.system("pip install requests aiohttp")
+    os.system("pip install -r requirements.txt")
     import aiohttp, asyncio, time, json
 
 class YDKParser:
