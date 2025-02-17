@@ -16,8 +16,16 @@ def clear_cache_button_logic() -> bool:
     else: # If there are cached images
         return True
 
-def create_img(master, img_path: str, img_position: tuple[int, int] = (0,0), img_size: tuple[int, int] = None, 
-               label_text: str = '', anchor: str = 'topleft', scale: float = 1.0, should_be_placed: bool = True) -> CTk.CTkLabel:
+def create_img(master, img_path: str, 
+               img_position: tuple[int, int] = (0,0), 
+               img_size: tuple[int, int] = None, 
+               label_text: str = '', 
+               anchor: str = 'topleft', 
+               scale: float = 1.0, 
+               should_be_placed: bool = True,
+               resample: int = Image.LANCZOS,
+               bg_color: str = "transparent",
+               fg_color: str = "transparent") -> CTk.CTkLabel:
     """
     Loads an places image into the window with the given path, position and size.
 
@@ -30,7 +38,8 @@ def create_img(master, img_path: str, img_position: tuple[int, int] = (0,0), img
         anchor (str, optional): The anchor point of the image (only used if should_be_placed is omitted or set to True). Defaults to 'topleft'.
         scale (float, optional): The scale of the image. Defaults to 1.0.
         should_be_placed (bool, optional): If the image should be placed in the window with the given tuple imp_position and the given anchor (if set to False img_position and achor can be omitted). Defaults to True.
-        
+        resample (int, optional): The resampling filter to use when resizing the image. Defaults to Image.LANCZOS. Available algorithms (NEAREST, BOX, BILINEAR, HAMMING, BICUBIC, LANCZOS)
+
     Returns:
         CTk.CTkLabel: The label object containing the image.
         
@@ -50,9 +59,13 @@ def create_img(master, img_path: str, img_position: tuple[int, int] = (0,0), img
     pillow_img: Image = Image.open(img_path) # Open the image with pillow
     if img_size is None: img_size = (int(pillow_img.width * scale), int(pillow_img.height * scale)) # If no size is provided, use the scaled image size
     else: img_size = (int(img_size[0] * scale), int(img_size[1] * scale)) # Apply the scale to the provided size
-    pillow_img = pillow_img.resize(img_size) # Resize the image
+    pillow_img = pillow_img.resize(img_size, resample=resample) # Resize the image
     ctk_img = CTk.CTkImage(pillow_img, size=img_size) # Load the image into ctk image class with correct arguments
-    ctk_label = CTk.CTkLabel(master=master, image=ctk_img, text=label_text) # Load the image into ctk label class
+    ctk_label = CTk.CTkLabel(master=master, 
+                             image=ctk_img,
+                             text=label_text,
+                             bg_color=bg_color,
+                             fg_color=fg_color) # Load the image into ctk label class
 
     if should_be_placed: # If the image should be placed in the window
         match anchor:
@@ -83,7 +96,8 @@ def create_button(master,
                   hover_color: tuple[int, int, int] | str = None, 
                   border_color: tuple[int, int, int] | str = None, 
                   should_be_placed: bool = True,
-                  state: str = "normal") -> CTk.CTkButton:
+                  state: str = "normal",
+                  bg_color: str = "transparent") -> CTk.CTkButton:
     
     """
     Creates a button in the window with the given text, position, size and command.
@@ -104,6 +118,7 @@ def create_button(master,
         hover_color (tuple[int, int, int] | str, optional): The color of the button when hovered. Defaults to None.
         border_color (tuple[int, int, int] | str, optional): The color of the button border. Defaults to None.
         state (str, optional): The state of the button. Defaults to "normal".
+        bg_color (str, optional): The background color of the button. Defaults to "transparent".
         
     Returns:
         CTk.CTkButton: The button object.
@@ -121,7 +136,7 @@ def create_button(master,
     if isinstance(fg_color, tuple): # If fg_color is a tuple
         if hover_color is None: # If there is no specified hover color
            hover_color = (min(fg_color[0]*0.75, 255), min(fg_color[1]*0.75, 255), min(fg_color[2]*0.75, 255)) # Set the hover color to a darker version of the fg color
-    elif fg_color == "transparent":
+    elif fg_color == "transparent" and hover_color is None: # If the fg_color is transparent and there is no specified hover color
         hover_color = "#2b2b2b"
         
     if type == "text": button = CTk.CTkButton(master=master, text=text, command=command, fg_color=fg_color, text_color=text_color, width=button_size[0], height=button_size[1], hover=hover, corner_radius=corner_radius, hover_color=hover_color, border_color=border_color) # Create the button object
@@ -139,7 +154,8 @@ def create_button(master,
                                hover_color=hover_color, 
                                border_color=border_color, 
                                text=text,
-                               state=state) # Create the button object
+                               state=state,
+                               bg_color=bg_color) # Create the button object
 
     if should_be_placed: button.place(x=button_position[0], y=button_position[1]) # Set the button position and size
     

@@ -51,13 +51,9 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         # CANVAS TAB
         # | Init widgets
-        self.canvas: tk.Canvas = tk.Canvas(self.canvas_tab, bg=canvas_color)
-        self.share_button: CTk.CTkButton = create_button(master=self.canvas_tab, 
-                                                         type="image", 
-                                                         command = lambda : self.export_canvas_to_png(filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG files", "*.png"), ("All files", "*.*")])),  #TODO fix this (it looks very bad)
-                                                         img_path="data/img/share_icon_light.png", 
-                                                         button_size=(50, 50), 
-                                                         should_be_placed=False)
+        self.canvas: tk.Canvas = tk.Canvas(master = self.canvas_tab, bg = canvas_color)
+
+        # TODO aggiungi intestazione a canvas con bottoni file, edit, ecc.. che poi aprono un menu a tendina con le varie opzioni
         
         # | Set the default color of the arrows
         self.arrow_color: str = arrow_color
@@ -219,7 +215,8 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.card_view_tab_preview_image_text.pack(side=tk.TOP, fill=tk.BOTH, padx=50, pady=50) # Pack the text to the top
 
         #   | Search filters
-        self.card_view_search_button.pack(side=tk.TOP, anchor='nw', padx=10, pady=10)  # Pack the button to the top left corner
+        self.card_view_search_online_button.pack(side=tk.TOP, anchor='nw', padx=10, pady=10)  # Pack the button to the top left corner
+        self.card_view_search_offline_button.pack(side=tk.TOP, anchor='nw', padx=10, pady=10)  # Pack the button to the top left corner
 
         self.card_view_tab_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the label to the top
         self.card_view_tab_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the entry to the top
@@ -296,9 +293,9 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         # Create a menu
         menu = tk.Menu(self.canvas, tearoff=0)
-        menu.add_command(label="Add card image", command=lambda: self.add_image("data/img/card_back_1.png", scale=0.25, x=event.x, y=event.y))
-        menu.add_command(label="Add arrow", command=lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
-        menu.add_command(label="Add text", command=lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
+        menu.add_command(label="Add card image", command = self.show_card_selection_window())
+        menu.add_command(label="Add arrow", command = lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
+        menu.add_command(label="Add text", command = lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
 
         # Show the menu at the mouse position
         menu.tk_popup(event.x_root, event.y_root)
@@ -378,6 +375,68 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         # Save the PIL image to the specified file path
         image.save(file_path + ".png")
+
+    def show_card_selection_window(self, image_paths: list[str], on_image_selected: callable): #TODO check if it works
+        """
+        Displays a small window in the center of the main window with a selection of images in a scrollable frame.
+
+        params:
+            image_paths: list[str] - A list of paths to the images to display.
+            on_image_selected: callable - A function to call when an image is selected. The selected image path will be passed as an argument.
+
+        return: None
+        """
+
+        # Create an overlay frame to make everything around the window darker
+        overlay = tk.Frame(self.root_window, bg='black', opacity=0.5)
+        overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        # Create a centered frame within the overlay frame
+        center_frame = tk.Frame(overlay, bg='white', padx=10, pady=10)
+        center_frame.place(relx=0.5, rely=0.5, anchor='center')
+
+        # Create a scrollable frame to display the images
+        canvas = tk.Canvas(center_frame, bg='white')
+        scrollbar = ttk.Scrollbar(center_frame, orient='vertical', command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg='white')
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+        # Add images to the scrollable frame
+        for image_path in image_paths:
+            image = Image.open(image_path)
+            image.thumbnail((100, 100), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(image)
+
+            label = tk.Label(scrollable_frame, image=photo, bg='white')
+            label.image = photo  # Keep a reference to avoid garbage collection
+            label.pack(padx=5, pady=5)
+            label.bind("<Button-1>", lambda e, path=image_path: self._on_image_click(path, overlay))
+
+    def _on_image_click(self, image_path, overlay):
+        """
+        Handles the image click event.
+
+        params:
+            image_path: str - The path to the selected image.
+            on_image_selected: callable - The function to call when an image is selected.
+            overlay: tk.Frame - The overlay frame to destroy after selection.
+
+        return: None
+        """
+        print(image_path)
+        overlay.destroy()
         
     async def show(self):
         """
@@ -527,3 +586,18 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         return: None
         """
         self.arrow_color = color
+
+    # Getters
+
+    def get_canvas_theme(self) -> str:
+        """
+        Returns the theme of the canvas.
+
+        return: str (dark, light) - The theme of the canvas based on the canvas color.
+        """
+        
+        canvas_color: str = self.canvas["bg"][1:] # Remove the "#" from the color string
+        r, g, b = int(canvas_color[0:2], 16), int(canvas_color[2:4], 16), int(canvas_color[4:6], 16) # Convert to rgb
+        brightness = (r * 299 + g * 587 + b * 114) / 1000 # Calculate the brightness of the color
+        if brightness > 128: return "light" # If the brightness is greater than 128 return "light"
+        return "dark" # Otherwise return "dark"
