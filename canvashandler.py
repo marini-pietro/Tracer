@@ -5,6 +5,7 @@ try:
     import tkinter as tk
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
+
 except ImportError:
     import os
     os.system("pip install -r requirements.txt")
@@ -14,7 +15,7 @@ except ImportError:
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
 
-from config import keybinds, VERSION, DEFAULT_COLORS
+from config import keybinds, VERSION, DEFAULT_COLORS, ASK_YDK_IMPORT_CONFIRMATION
 from utils import create_img, create_button
 from datetime import datetime
 
@@ -30,7 +31,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         
         self.root_window = root_window
         if sheet_name is not None: self.sheet_name = sheet_name # Set the sheet name to the provided value
-        self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y-%m-%d')}" # Set the sheet name to the current date if no name is provided
+        self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y-%m-%d')}" # Set the sheet name to the current date if no name is provided TODO implement logic to update the name with a number if a sheet with the same name already exists
 
         # Create tabview widget and its tabs
         self.tabs = CTk.CTkTabview(self.root_window)
@@ -44,14 +45,11 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.log_handler = log_handler 
         self.ydk_parser = ydk_parser
         self.api_handler = api_handler
-        self.ask_ydk_import_confirmation: bool = True # If True, the user will be asked for confirmation before importing a ydk file
-        self.use_cropped_images: bool = False # If True, the cropped images will be used (only the art of the card will be displayed)
         self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0} # Data used for dragging items on the canvas
-        self.images: list[Image.Image] = [[ ], [ ], [ ]] # full size, small size, cropped size
 
         # CANVAS TAB
         # | Init widgets
-        self.canvas: tk.Canvas = tk.Canvas(master = self.canvas_tab, bg = canvas_color)
+        self.canvas: CTk.CTkCanvas = CTk.CTkCanvas(master = self.canvas_tab, bg = canvas_color)
 
         # TODO aggiungi intestazione a canvas con bottoni file, edit, ecc.. che poi aprono un menu a tendina con le varie opzioni
         
@@ -69,11 +67,10 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.canvas.bind("<MouseWheel>", self.on_mouse_wheel)
 
         # | Place the widgets
-        self.share_button.place(relx=1.0, x=-10, y=10, anchor='ne')
 
         # CARDS TAB
         # | Init widgets
-        self.cards_list_frame = CTk.CTkFrame(self.cards_tab, corner_radius=25, fg_color="#333333")
+        self.cards_list_frame = CTk.CTkScrollableFrame(self.cards_tab, corner_radius=25, fg_color="#333333")
         self.cards_details_frame = CTk.CTkFrame(self.cards_tab, corner_radius=25, fg_color="#333333")
         self.cards_empty_label = CTk.CTkLabel(self.cards_list_frame, text="No cards in the list.\nPress \"Import from YDK\" button or go to \"Cards search\" tab to add cards.", 
                                               font=("Helvetica", 16))
@@ -89,66 +86,8 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.cards_list_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=10, expand=True) # Pack the frame to the left
         self.cards_details_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=10, expand=True) # Pack the frame to the right
         self.cards_tab_import_button.pack(side=tk.BOTTOM, expand=False, padx=10, pady=10) # Pack the button to the bottom
-        if len(self.images[0]) == 0 and len(self.images[1]) == 0 and len(self.images[2]) == 0: # If there are not images in the list place the empty label
-            self.cards_empty_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        # HELP TAB
-        help_tab_frame = CTk.CTkFrame(self.help_tab)
-        help_tab_frame.pack(fill=tk.BOTH, expand=True)
-
-        # | Init widgets
-        navigation_help_label_string = (
-            "Navigation:\n\n"
-            "Left click and drag to move the canvas.\n"
-            "Right click and drag to select item.\n"
-            "Scroll to zoom in and out."
-        )
-        keybinds_help_label_string = (
-            "Keybinds:\n\n"
-            f"{keybinds['arrow_placement']} - Place arrow\n"
-            f"{keybinds['card_placement']} - Place card\n"
-            f"{keybinds['delete_selected']} - Delete selected item(s)\n"
-            f"{keybinds['move_selected']} - Move selected item(s)\n"
-        )
-        IO_help_label_string = (
-            "Input/Output:\n\n"
-            f"Ctrl + S - Save the current canvas\n"
-            f"Ctrl + E - Export the current canvas as png image\n"
-        )
-
-        self.navigation_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
-        self.navigation_help_label = CTk.CTkLabel(
-            self.navigation_help_frame, anchor="center", text=navigation_help_label_string, font=("Helvetica", 16)
-        )
-        self.keybinds_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
-        self.keybinds_help_label = CTk.CTkLabel(
-            self.keybinds_help_frame, anchor="center", text=keybinds_help_label_string, font=("Helvetica", 16)
-        )
-        self.IO_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
-        self.IO_help_label = CTk.CTkLabel(
-            self.IO_help_frame, anchor="center", text=IO_help_label_string, font=("Helvetica", 16)
-        )
-        self.about_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
-        self.about_help_label = CTk.CTkLabel(
-            self.about_help_frame, anchor="center", text=f"About:\n\nOpen source created by Pietro Marini (marini-pietro on GitHub)\nVersion: {VERSION}", font=("Helvetica", 16)
-        )
-
-        # | Place the widgets
-        self.navigation_help_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        self.keybinds_help_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-        self.IO_help_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        self.about_help_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
-
-        help_tab_frame.grid_rowconfigure(0, weight=1, uniform="row")
-        help_tab_frame.grid_rowconfigure(1, weight=1, uniform="row")
-        help_tab_frame.grid_columnconfigure(0, weight=1, uniform="col")
-        help_tab_frame.grid_columnconfigure(1, weight=1, uniform="col")
-
-        self.navigation_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.keybinds_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.IO_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.about_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
+        # Widgets that should be place inside of the scrollable frame are placed after required data is loaded            
+        
         # CARD VIEW TAB
         # | Frame and relative widgets
         self.card_view_tab_frame = CTk.CTkFrame(self.card_view_tab, corner_radius=25, fg_color="#333333")
@@ -215,11 +154,11 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         self.card_view_tab_preview_image_text.pack(side=tk.TOP, fill=tk.BOTH, padx=50, pady=50) # Pack the text to the top
 
         #   | Search filters
-        self.card_view_search_online_button.pack(side=tk.TOP, anchor='nw', padx=10, pady=10)  # Pack the button to the top left corner
-        self.card_view_search_offline_button.pack(side=tk.TOP, anchor='nw', padx=10, pady=10)  # Pack the button to the top left corner
-
         self.card_view_tab_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the label to the top
         self.card_view_tab_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10) # Pack the entry to the top
+
+        self.card_view_search_online_button.pack(side=tk.LEFT, padx=10, pady=10)  # Pack the button to the left with padding
+        self.card_view_search_offline_button.pack(side=tk.LEFT, padx=10, pady=10)  # Pack the button to the left with padding
 
         self.card_view_tab_level_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
         self.card_view_tab_level_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
@@ -232,6 +171,63 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
         self.card_view_tab_type_label.pack(side=tk.LEFT, padx=10, pady=5) # Pack the label to the top
         self.card_view_tab_type_options.pack(side=tk.LEFT, padx=10, pady=5) # Pack the option menu to the top
+
+        # HELP TAB
+        help_tab_frame = CTk.CTkFrame(self.help_tab)
+        help_tab_frame.pack(fill=tk.BOTH, expand=True)
+
+        # | Init widgets
+        navigation_help_label_string = (
+            "Navigation:\n\n"
+            "Left click and drag to move the canvas.\n"
+            "Right click and drag to select item.\n"
+            "Scroll to zoom in and out."
+        )
+        keybinds_help_label_string = (
+            "Keybinds:\n\n"
+            f"{keybinds['arrow_placement']} - Place arrow\n"
+            f"{keybinds['card_placement']} - Place card\n"
+            f"{keybinds['delete_selected']} - Delete selected item(s)\n"
+            f"{keybinds['move_selected']} - Move selected item(s)\n"
+        )
+        IO_help_label_string = (
+            "Input/Output:\n\n"
+            f"Ctrl + S - Save the current canvas\n"
+            f"Ctrl + E - Export the current canvas as png image\n"
+        )
+
+        self.navigation_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
+        self.navigation_help_label = CTk.CTkLabel(
+            self.navigation_help_frame, anchor="center", text=navigation_help_label_string, font=("Helvetica", 16)
+        )
+        self.keybinds_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
+        self.keybinds_help_label = CTk.CTkLabel(
+            self.keybinds_help_frame, anchor="center", text=keybinds_help_label_string, font=("Helvetica", 16)
+        )
+        self.IO_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
+        self.IO_help_label = CTk.CTkLabel(
+            self.IO_help_frame, anchor="center", text=IO_help_label_string, font=("Helvetica", 16)
+        )
+        self.about_help_frame = CTk.CTkFrame(help_tab_frame, corner_radius=25)
+        self.about_help_label = CTk.CTkLabel(
+            self.about_help_frame, anchor="center", text=f"About:\n\nOpen source created by Pietro Marini (marini-pietro on GitHub)\nVersion: {VERSION}", font=("Helvetica", 16)
+        )
+
+        # | Place the widgets
+        self.navigation_help_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        self.keybinds_help_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.IO_help_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        self.about_help_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
+
+        help_tab_frame.grid_rowconfigure(0, weight=1, uniform="row")
+        help_tab_frame.grid_rowconfigure(1, weight=1, uniform="row")
+        help_tab_frame.grid_columnconfigure(0, weight=1, uniform="col")
+        help_tab_frame.grid_columnconfigure(1, weight=1, uniform="col")
+
+        self.navigation_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.keybinds_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.IO_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.about_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Event handling functions
 
@@ -288,12 +284,20 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
 
     def on_right_button_press(self, event):
         """
-        Marks the position of the canvas when the right mouse button is pressed.
+        Displays a small menu when the right mouse button is pressed prompting the user to select an action.
+
+        params:
+            event: tk.Event - The event object containing information about the event.
+        raises: 
+            None
+        return:
+            None
         """
 
-        # Create a menu
+        # Create a menus
         menu = tk.Menu(self.canvas, tearoff=0)
-        menu.add_command(label="Add card image", command = self.show_card_selection_window())
+
+        # Add commands to the menus
         menu.add_command(label="Add arrow", command = lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
         menu.add_command(label="Add text", command = lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
 
@@ -318,7 +322,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         image = Image.open(image_path)
         image = image.resize((int(image.width * scale), int(image.height * scale)), Image.LANCZOS)
         image = ImageTk.PhotoImage(image)
-        self.images.append(image)  # Keep a reference to avoid garbage collection
+        self.card_images.append(image)  # Keep a reference to avoid garbage collection
         self.canvas.create_image(x, y, image=image, anchor=tk.CENTER, tags="image")
 
     def add_arrow(self, x1, y1, x2, y2):
@@ -376,67 +380,19 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         # Save the PIL image to the specified file path
         image.save(file_path + ".png")
 
-    def show_card_selection_window(self, image_paths: list[str], on_image_selected: callable): #TODO check if it works
-        """
-        Displays a small window in the center of the main window with a selection of images in a scrollable frame.
-
-        params:
-            image_paths: list[str] - A list of paths to the images to display.
-            on_image_selected: callable - A function to call when an image is selected. The selected image path will be passed as an argument.
-
-        return: None
-        """
-
-        # Create an overlay frame to make everything around the window darker
-        overlay = tk.Frame(self.root_window, bg='black', opacity=0.5)
-        overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-
-        # Create a centered frame within the overlay frame
-        center_frame = tk.Frame(overlay, bg='white', padx=10, pady=10)
-        center_frame.place(relx=0.5, rely=0.5, anchor='center')
-
-        # Create a scrollable frame to display the images
-        canvas = tk.Canvas(center_frame, bg='white')
-        scrollbar = ttk.Scrollbar(center_frame, orient='vertical', command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg='white')
-
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
-
-        # Add images to the scrollable frame
-        for image_path in image_paths:
-            image = Image.open(image_path)
-            image.thumbnail((100, 100), Image.LANCZOS)
-            photo = ImageTk.PhotoImage(image)
-
-            label = tk.Label(scrollable_frame, image=photo, bg='white')
-            label.image = photo  # Keep a reference to avoid garbage collection
-            label.pack(padx=5, pady=5)
-            label.bind("<Button-1>", lambda e, path=image_path: self._on_image_click(path, overlay))
-
-    def _on_image_click(self, image_path, overlay):
+    def _on_image_click(self, image_path, center_frame, shadow_frame):
         """
         Handles the image click event.
 
         params:
             image_path: str - The path to the selected image.
-            on_image_selected: callable - The function to call when an image is selected.
-            overlay: tk.Frame - The overlay frame to destroy after selection.
+            center_frame: CTkFrame - The center frame to destroy after selection.
+            shadow_frame: CTkFrame - The shadow frame to destroy after selection.
 
         return: None
         """
         print(image_path)
-        overlay.destroy()
+        center_frame.destroy()
         
     async def show(self):
         """
@@ -456,7 +412,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         return: list[Image.Image] - A list of Pillow Image objects.
         """
 
-        if self.ask_ydk_import_confirmation:
+        if ASK_YDK_IMPORT_CONFIRMATION:
             msg = CTkMessagebox(master=self.root_window, 
                                 title="Import ydk file?", 
                                 message="Are you sure you want to import a ydk file?\n All current added cards will be lost.",
@@ -468,14 +424,14 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
             
             response = msg.get()
             if response == "No": return
-            if response == "Yes and don't ask again": self.ask_ydk_import_confirmation = False
+            if response == "Yes and don't ask again": self.set_config_ask_ydk_import_confirmation(False)
             
 
         ydk_file_path = filedialog.askopenfilename(filetypes=[("YDK files", "*.ydk"), ("All files", "*.*")])
 
         card_ids, card_data, card_img_paths = self.ydk_parser.read_ydk(ydk_file_path)
 
-        self.images = [[ ], [ ], [ ]] # Clear the images list
+        self.card_images = [[ ], [ ], [ ]] # Clear the images list
         [self.add_image_to_list(img_path) for img_path in card_img_paths] # Add the images to the list as pillow images
 
     def search_cards(self, online: bool = True) -> dict:
@@ -529,6 +485,7 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         """
         self.root_window = root_window
         self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window
+        self.root_window.title(self.sheet_name) # Set the title of the window to the sheet name
     
     def add_image_to_list(self, image_path):
         """
@@ -537,13 +494,14 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         params: image_path: str - The path to the image file.
         return: None	
         """
+        print(f"Adding image: {image_path}")
 
         if "cards_small" in image_path:
-            self.images[1].append(Image.open(image_path))
+            self.card_images[1].append(Image.open(image_path))
         elif "cards_cropped" in image_path:
-            self.images[2].append(Image.open(image_path))
+            self.card_images[2].append(Image.open(image_path))
         elif "cards" in image_path:
-            self.images[0].append(Image.open(image_path))
+            self.card_images[0].append(Image.open(image_path))
 
     def update_online_search_button_state(self):
         """
@@ -586,6 +544,25 @@ class CanvasHandler: #TODO add possibility to discard current canvas and return 
         return: None
         """
         self.arrow_color = color
+
+    def set_config_ask_ydk_import_confirmation(self, value: bool):
+        """
+        Sets the value of ASK_YDK_IMPORT_CONFIRMATION in config.py.
+        """
+        
+        # Read the current contents of config.py
+        with open("config.py", "r") as file:
+            lines = file.readlines()
+        
+        # Modify the value of ASK_YDK_IMPORT_CONFIRMATION
+        for i, line in enumerate(lines):
+            if line.startswith("ASK_YDK_IMPORT_CONFIRMATION"):
+                lines[i] = f"ASK_YDK_IMPORT_CONFIRMATION = {value}\n"
+                break
+        
+        # Write the updated contents back to config.py
+        with open("config.py", "w") as file:
+            file.writelines(lines)
 
     # Getters
 

@@ -20,6 +20,8 @@ class CTkColorPicker(customtkinter.CTkFrame):
                  command = None,
                  orientation = "vertical",
                  rgb_entries: bool = False,
+                 button_color: str = "#000000",
+                 button_hover_color: str = "#000000",
                  **slider_kwargs) -> None:
     
         super().__init__(master=master, corner_radius=corner_radius)
@@ -65,11 +67,21 @@ class CTkColorPicker(customtkinter.CTkFrame):
         self.brightness_slider_value: customtkinter.IntVar = customtkinter.IntVar() 
         self.brightness_slider_value.set(255) # set value of brightness slider to 255
         
-        self.slider: customtkinter.CTkSlider = customtkinter.CTkSlider(master=self, width=20, border_width=self.slider_border,
-                                              button_length=15, progress_color=self.hex_color, from_=0, to=255,
-                                              variable=self.brightness_slider_value, number_of_steps=256,
-                                              button_corner_radius=self.corner_radius, corner_radius=self.corner_radius,
-                                              command=lambda x:self.update_colors(), orientation=orientation, **slider_kwargs)
+        self.slider: customtkinter.CTkSlider = customtkinter.CTkSlider(master=self, 
+                                                                       width=20, 
+                                                                       border_width=self.slider_border,
+                                                                       button_length=15, 
+                                                                       progress_color=self.hex_color, 
+                                                                       from_=0, 
+                                                                       to=255,
+                                                                       variable=self.brightness_slider_value, 
+                                                                       number_of_steps=256,
+                                                                       button_color=button_color,
+                                                                       button_hover_color=button_hover_color,
+                                                                       button_corner_radius=self.corner_radius, 
+                                                                       corner_radius=self.corner_radius,
+                                                                       command=lambda x:self.update_colors(), 
+                                                                       orientation=orientation, **slider_kwargs)
         
         # create the entry widget
         self.entry: customtkinter.CTkEntry = customtkinter.CTkEntry(master=self, text_color="#000000", width=10, fg_color=self.hex_color,
