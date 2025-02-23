@@ -327,7 +327,7 @@ class App(CTk.CTk):
                                                 should_be_placed=False,
                                                 scale=0.15) # Load the close button
         
-        close_button.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
+        close_button.place(relx=1.0, rely=0, anchor="ne", x=-10, y=10)
         close_button.bind("<Button-1>", lambda _: settings_frame.destroy()) # Bind the close button to a function
 
         # Appearance mode switch
@@ -336,7 +336,7 @@ class App(CTk.CTk):
                                                progress_color="#4a4d50") # Create the appearance mode switch
         if APPEARENCE_MODE == "dark": appearance_mode_switch.select()  # Set the switch to the current appearance mode
         else: appearance_mode_switch.deselect()
-        appearance_mode_switch.pack(side="top", anchor="center", padx=50, pady=10) # Pack the appearance mode switch
+        appearance_mode_switch.place(relx=0.5, rely=0.5, anchor="center", y=-25) # Place the switch
 
         # Use cropped images switch
         use_cropped_images_switch = CTk.CTkSwitch(settings_frame,
@@ -345,7 +345,7 @@ class App(CTk.CTk):
                                                   command=lambda: self.set_use_cropped_images(use_cropped_images_switch.get()))
         if USE_CROPPED_IMAGES: use_cropped_images_switch.select()
         else: use_cropped_images_switch.deselect()
-        use_cropped_images_switch.pack(side="top", anchor="center", padx=50, pady=10)
+        use_cropped_images_switch.place(relx=0.5, rely=0.5, anchor="center", y=25)
         
         # Github link button
         github_link_button = create_img(master=settings_frame,
