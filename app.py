@@ -165,7 +165,7 @@ class App(CTk.CTk):
         canvas_color_label = CTk.CTkLabel(canvas_color_frame, 
                                           text="Enter canvas color:")
         canvas_color_entry = CTk.CTkEntry(canvas_color_frame, 
-                                          width=75, 
+                                          width=100, 
                                           height=25, 
                                           font=("Helvetica", 14), 
                                           textvariable=StringVar(value=DEFAULT_COLORS["CANVAS"]), 
@@ -191,7 +191,7 @@ class App(CTk.CTk):
         arrow_color_frame = CTk.CTkFrame(new_frame)
         arrow_color_label = CTk.CTkLabel(arrow_color_frame, text="Enter arrow color:")
         arrow_color_entry = CTk.CTkEntry(arrow_color_frame, 
-                                         width=75, 
+                                         width=100, 
                                          height=25, 
                                          font=("Helvetica", 14), 
                                          textvariable=StringVar(value=DEFAULT_COLORS["ARROW"]), 
@@ -319,7 +319,7 @@ class App(CTk.CTk):
         # Create new subwindow
         settings_frame = CTk.CTkFrame(master=self, width=frame_width, height=frame_height, fg_color="#2b2b2b", corner_radius=25)
         settings_frame.place(relx=0.5, rely=0.5, anchor="center")
-        settings_frame.pack_propagate(False)  # Prevent the frame from resizing to fit its children
+        settings_frame.pack_propagate(False) # Prevent the frame from resizing to minimum size to fit its children
 
         # Close button
         close_button: CTk.CTkLabel = create_img(master=settings_frame,
@@ -337,6 +337,19 @@ class App(CTk.CTk):
         if APPEARENCE_MODE == "dark": appearance_mode_switch.select()  # Set the switch to the current appearance mode
         else: appearance_mode_switch.deselect()
         appearance_mode_switch.place(relx=0.5, rely=0.5, anchor="center", y=-25) # Place the switch
+
+        # Report bug button
+        report_bug_button = create_button(master=settings_frame,
+                                          text="Report a bug",
+                                          button_size=(100, 50),
+                                          command=lambda: os.system(f"start {REPO_URL}/issues"),
+                                          text_color='white', 
+                                          fg_color="transparent",
+                                          border_color='#4a4d50',
+                                          corner_radius=10,
+                                          hover=True)
+        report_bug_button.place(relx=0.5, rely=0.5, anchor="center", y=25)
+        
 
         # Use cropped images switch
         use_cropped_images_switch = CTk.CTkSwitch(settings_frame,
@@ -398,8 +411,8 @@ class App(CTk.CTk):
             file.writelines(lines)
 
     def swap_colors(self, arrow_color_entry, canvas_color_entry):
-        arrow_color, canvas_color = arrow_color_entry.get(), canvas_color_entry.get()
-        arrow_color_entry.configure(textvariable=StringVar(value=canvas_color))
+        arrow_color = arrow_color_entry.get()
+        arrow_color_entry.configure(textvariable=StringVar(value=canvas_color_entry.get()))
         canvas_color_entry.configure(textvariable=StringVar(value=arrow_color))
 
 if __name__ == "__main__":
