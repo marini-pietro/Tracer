@@ -347,8 +347,9 @@ class App(CTk.CTk):
                                           fg_color="transparent",
                                           border_color='#4a4d50',
                                           corner_radius=10,
+                                          should_be_placed=False,
                                           hover=True)
-        report_bug_button.place(relx=0.5, rely=0.5, anchor="center", y=25)
+        report_bug_button.place(relx=0.5, rely=0.6, anchor="center", y=25)
         
 
         # Use cropped images switch

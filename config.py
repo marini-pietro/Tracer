@@ -27,3 +27,9 @@ DEFAULT_COLORS = {
     "ARROW": "#000000",
     "CANVAS": "#FFFFFF",
 }
+
+# Email configuration
+EMAIL_CONFIG = {
+    "email_address": "",
+    "email_password": ""
+}

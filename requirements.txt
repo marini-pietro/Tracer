@@ -5,3 +5,5 @@ tcl
 customtkinter
 CTkMessagebox
 aiohttp
+google-auth 
+google-auth-oauthlib
