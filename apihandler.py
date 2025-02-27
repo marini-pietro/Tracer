@@ -30,11 +30,13 @@ class APIHandler:
         
         if not are_search_targets_valid: raise ValueError("Invalid search target. Please use 'name', 'id', 'level', 'race', 'attribute' or 'type'.")
 
-        final_url = BASE_URL # Initialize the final URL
+        final_url: str = BASE_URL # Initialize the final URL
 
         # Add the search values and search targets to the URL
         for search_target, search_value in search_data.items():
             final_url += f"{search_target}={search_value}&"
+
+        final_url = final_url[:-1] # Remove the last '&' from the URL
   
         response = requests.get(final_url) # Send the request to the API
     

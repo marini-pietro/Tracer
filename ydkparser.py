@@ -13,14 +13,14 @@ class YDKParser:
     def __init__(self, api_handler, log_handler):
         self.api_handler = api_handler
         self.log_handler = log_handler
-        self.app_reference = None
+        self.app = None
         self.deck_positions: dict[str, int] = {"main": 0, "extra": 1, "side": 2}
 
         self.semaphore = asyncio.Semaphore(20) # create a semaphore to limit the number of concurrent requests to 20
         self.lock = asyncio.Lock() # create a lock to ensure thread safety when writing to the self.card_img_paths_list
 
         self.card_data_output: list[dict] = [] # This list will contain all the card data dictionaries
-        self.card_imgs_urls: list[str] = [] # This list will contain all the card image URLs that need to be cached (passed to the cache_img function in thread)
+        self.card_imgs_urls: list[list[str, str, str]] = [] # This list will contain all the card image URLs that need to be cached (passed to the cache_img function in thread)
 
     def read_ydk(self, ydk_file):
         """
@@ -66,7 +66,7 @@ class YDKParser:
 
                 card_type: str = card_data["data"][0]["type"] # get the card type from the card data
 
-                self.app_reference.card_objects.append(
+                self.app.card_objects.append(
                     Card(card_id=line,
                          card_type=card_type,
                          level=card_data["data"][0]["level"] if card_type not in ["Spell Card", "Trap Card"] else None,
@@ -87,7 +87,7 @@ class YDKParser:
         asyncio.run(self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}."))
 
         # Create the card images (not possible in the loop that reads the file because the images need to be cached first)
-        [card.create_images(img_root_window=self.app_reference.canvas_handler.cards_list_frame) for card in self.app_reference.card_objects]
+        #[card.create_images(img_root_window=self.app.canvas_handler.cards_list_frame) for card in self.app.card_objects]
 
         # Delete the card data and card image URLs lists to free up memory
         self.card_data_output = []
@@ -134,10 +134,9 @@ class YDKParser:
         returns:
             None
         """
-
         
         img_tasks = [self.cache_img(url) for urls in self.card_imgs_urls for url in urls] # create a list of tasks to cache the images
-        json_tasks = [self.cache_json(card_data) for deck_type in self.card_data_output for card_data in deck_type] # create a list of tasks to cache the card data
+        json_tasks = [self.cache_json(card_data) for card_data in self.card_data_output] # create a list of tasks to cache the card data
         
         tasks = img_tasks + json_tasks
         task_batch_size = 20
@@ -194,8 +193,7 @@ class YDKParser:
             None
         """
 
-        async with self.semaphore:
-            print(f"card data - {card_data}\n\n\n", flush=True)
+        async with self.semaphore: # limit the number of concurrent threads to 20
             card_id: str = card_data["data"][0]["id"] # get the card id
             card_data_path = os.path.join("data", "card_data", f"{card_id}.json") # create the final card data path
 
@@ -234,16 +232,16 @@ class YDKParser:
 
         await self.log_handler.log(type="INFO", message="Cleared all cache.")
     
-    def set_app_reference(self, app_reference):
+    def set_app_reference(self, app):
         """
         Sets the reference to the app.
 
         params:
-            app_reference: App The reference to the app.
+            app: App The reference to the app.
         raises:
             None
         returns:
             None
         """
 
-        self.app_reference = app_reference
+        self.app = app

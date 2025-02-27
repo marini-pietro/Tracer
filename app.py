@@ -5,14 +5,14 @@ del sys
 # Import pip installed modules, if installation fails, install the required packages and retry the import
 try:
     import customtkinter as CTk
-    from tkinter import filedialog, StringVar, TOP, BOTH
+    from tkinter import filedialog, StringVar
 except ImportError:
     os.system("pip install -r requirements.txt") # Install the required packages
     import customtkinter as CTk
     from tkinter import filedialog, StringVar
 
 # Built in and code defined modules
-from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS, REPO_URL, USE_CROPPED_IMAGES
+from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS, REPO_URL, USE_CROPPED_IMAGES, EMAIL_CONFIG
 from utils import clear_cache_button_logic, create_img, create_button # Import the necessary functions from utils.py
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
@@ -73,8 +73,7 @@ class App(CTk.CTk):
             border_width=2,  # Set the border width
             corner_radius=10, 
             hover=True,
-            command=lambda: self.new_sheet_window() 
-                                                  
+            command=self.new_sheet_window # Bind the new sheet button to the function to create a new sheet
         )
         
         self.import_sheet_button: CTk.CTkButton = create_button(
@@ -88,7 +87,7 @@ class App(CTk.CTk):
             border_width=2,  # Set the border width
             corner_radius=10, 
             hover=True,
-            command=self.import_sheet_dialogue
+            command=self.import_sheet_dialogue 
         )
         
         self.clear_cache_button: CTk.CTkButton = create_button(
@@ -111,10 +110,11 @@ class App(CTk.CTk):
                                                         img_position=(WINDOW_WIDTH-50, 50),
                                                         anchor="center",
                                                         scale=0.1) # Load the settings button
-        self.settings_button.bind("<Button-1>", self.show_settings_window) # Bind the settings button to a function
+        self.settings_button.bind("<Button-1>", lambda _: (self.settings_button.unbind("<Button-1>"), self.show_settings_window(event=_))) # Bind the settings button to the function to show the settings window
 
         if clear_cache_button_logic() == False: self.clear_cache_button.configure(state='disabled') # Run the clear cache button logic (disable the button if there is no cache)
 
+    # Main menu submenus
     def new_sheet_window(self) -> None:
         """
         Creates a new sheet in the window.
@@ -193,9 +193,10 @@ class App(CTk.CTk):
         canvas_entry_button.pack(side="left") # Pack the button
 
         # Create entry for arrow color
-        arrow_color_frame = CTk.CTkFrame(new_frame)
-        arrow_color_label = CTk.CTkLabel(arrow_color_frame, text="Enter arrow color:")
-        arrow_color_entry = CTk.CTkEntry(arrow_color_frame, 
+        arrow_color_frame = CTk.CTkFrame(master=new_frame)
+        arrow_color_label = CTk.CTkLabel(master=arrow_color_frame, 
+                                         text="Enter arrow color:")
+        arrow_color_entry = CTk.CTkEntry(master=arrow_color_frame, 
                                          width=100, 
                                          height=25, 
                                          font=("Helvetica", 14), 
@@ -227,15 +228,15 @@ class App(CTk.CTk):
 
         # Create a button to submit the input
         submit_button = create_button(master=new_frame, 
-                  text="Submit", 
-                  button_size=(100, 50), 
-                  command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get(), new_frame=new_frame), 
-                  text_color='white', 
-                  fg_color="transparent",
-                  hover=True, 
-                  border_color='#565656',
-                  should_be_placed=False,
-                  corner_radius=25)
+                                      text="Submit", 
+                                      button_size=(100, 50), 
+                                      command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get(), new_frame=new_frame), 
+                                      text_color='white', 
+                                      fg_color="transparent",
+                                      hover=True, 
+                                      border_color='#565656',
+                                      should_be_placed=False,
+                                      corner_radius=25)
         submit_button.place(relx=0.5, rely=1.0, anchor="center", y=-15 - submit_button.winfo_reqheight()) # Place the submit button
 
     def process_new_sheet_input(self, sheet_name: str, import_ydk: str, canvas_color: str, arrow_color: str, new_frame) -> None:
@@ -265,8 +266,9 @@ class App(CTk.CTk):
             ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
             self.ydk_parser.read_ydk(ydk_path) # Read the ydk file, cache the data and create and store the card objects into the card_objects list
 
-            for card in self.card_objects:
-                card.images["small"].pack() # Pack the small images
+            for size in ["small", "medium", "large"]: # TODO figure out why the images do not appear in cards tab
+                for card in self.card_objects[["small", "medium", "large"].index(size)]:
+                    card.images[size].pack()
 
         else:
             self.canvas_handler.cards_empty_label.pack() # Show the empty label if the user did not import ydk
@@ -287,14 +289,6 @@ class App(CTk.CTk):
     def import_sheet_dialogue(self) -> None:
         """
         Opens a file dialog to import a combo sheet.
-        """
-
-        file_path = filedialog.askopenfilename(title="Select combo sheet", filetypes=[("Combo sheet files", "*.json")]) # Open the file dialog to select a combo sheet TODO: implement this feature
-        # Since i decided to use generic json some validation is needed to check if the file is properly formatted
-
-    async def process_clear_cache_button_press(self) -> None:
-        """
-        Clears all the cache and then disables the clear cache button.
 
         params:
             None
@@ -304,15 +298,16 @@ class App(CTk.CTk):
             None
         """
 
-        await self.ydk_parser.clear_cache() # Clear the cache
-        self.clear_cache_button.configure(state='disabled') # Disable the clear cache button
+        file_path = filedialog.askopenfilename(title="Select combo sheet", filetypes=[("Combo sheet files", "*.json")]) # Open the file dialog to select a combo sheet TODO: implement this feature
+        # Since i decided to use generic json some validation is needed to check if the file is properly formatted
 
+    # Settings menu and subwindows
     def show_settings_window(self, event) -> None:
         """
         Shows the settings window.
 
         params:
-            None
+            event (Event): The event that triggered the function. (Unused)
         raises:
             None
         returns:    
@@ -331,9 +326,8 @@ class App(CTk.CTk):
                                                 img_path="data/img/cross_light.png" if APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
                                                 should_be_placed=False,
                                                 scale=0.15) # Load the close button
-        
         close_button.place(relx=1.0, rely=0, anchor="ne", x=-10, y=10)
-        close_button.bind("<Button-1>", lambda _: settings_frame.destroy()) # Bind the close button to a function
+        close_button.bind("<Button-1>", lambda _: (settings_frame.destroy(), self.settings_button.bind("<Button-1>", lambda _: (self.settings_button.unbind("<Button-1>"), self.show_settings_window(event=_))))) # Bind the close button to a function
 
         # Appearance mode switch
         appearance_mode_switch = CTk.CTkSwitch(settings_frame, 
@@ -347,7 +341,7 @@ class App(CTk.CTk):
         report_bug_button = create_button(master=settings_frame,
                                           text="Report a bug",
                                           button_size=(100, 50),
-                                          command= lambda: self.email_handler.show_report_modality_window(root=self),
+                                          command= lambda: self.show_report_modality_window(root=self), 
                                           text_color='white', 
                                           fg_color="transparent",
                                           border_color='#4a4d50',
@@ -355,7 +349,6 @@ class App(CTk.CTk):
                                           should_be_placed=False,
                                           hover=True)
         report_bug_button.place(relx=0.5, rely=0.6, anchor="center", y=25)
-        
 
         # Use cropped images switch
         use_cropped_images_switch = CTk.CTkSwitch(settings_frame,
@@ -390,6 +383,201 @@ class App(CTk.CTk):
         ygoprodeck_link_button.place(relx=0.6, rely=0.9, anchor="center")
         ygoprodeck_link_button.bind("<Button-1>", lambda _: os.system("start https://ygoprodeck.com/"))
 
+    def show_report_modality_window(self):
+        """
+        Show the bug report modality window.
+        """
+
+        # WINDOW_WIDTH, WINDOW_HEIGHT = root.winfo_screenwidth(), root.winfo_screenheight() # TODO figure out which is better
+        WINDOW_WIDTH, WINDOW_HEIGHT = int(WINDOW_RESOLUTION.split('x')[0]), int(WINDOW_RESOLUTION.split('x')[1])
+        frame_width, frame_height = WINDOW_WIDTH*0.8, WINDOW_HEIGHT*0.8
+
+        # New subwindow
+        modality_window = CTk.CTkFrame(master=self, width=frame_width, height=frame_height, fg_color="#2b2b2b", corner_radius=25)
+        modality_window.pack(expand=True, anchor="center") # Pack the frame and prevent it from resizing to fit the window
+        modality_window.pack_propagate(False) # Prevent the frame from resizing to minimum size to fit its children
+
+        # Close button
+        close_button: CTk.CTkLabel = create_img(master=modality_window,
+                                                img_path="data/img/cross_light.png" if APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
+                                                should_be_placed=False,
+                                                scale=0.15) # Load the close button
+        close_button.pack(side="top", anchor="ne", padx=10, pady=10)
+        close_button.bind("<Button-1>", lambda _: modality_window.destroy()) # Bind the close button to a function
+
+        # Buttons to choose the mode
+        report_as_issue_button: CTk.CTkButton = create_button(master=modality_window,
+                                                              text="Report as github issue",
+                                                              button_size=(100, 50),
+                                                              text_color="white",
+                                                              fg_color="transparent",
+                                                              bg_color="transparent",
+                                                              border_color="#4a4d50",
+                                                              corner_radius=10,
+                                                              should_be_placed=False,
+                                                              hover=True,
+                                                              command= lambda: os.system(f"start {REPO_URL}/issues/new")) # Open the github issues page
+        report_as_email_button: CTk.CTkButton = create_button(master=modality_window,
+                                                              text="Report as email",
+                                                              button_size=(100, 50),
+                                                              text_color="white",
+                                                              fg_color="transparent",
+                                                              bg_color="transparent",
+                                                              border_color="#4a4d50",
+                                                              corner_radius=10,
+                                                              should_be_placed=False,
+                                                              hover=True,
+                                                              command= lambda: (modality_window.destroy(), self.show_email_compilation_window(root=self))) # Show the email compilation window
+        
+        report_as_issue_button.pack(side="left", expand=True, padx=(0, 5)) # Pack the report as issue button with padding
+        report_as_email_button.pack(side="left", expand=True, padx=(5, 0)) # Pack the report as email button with padding
+        
+    def show_password_input_window(self):
+        """
+        Show the password window.
+        
+        params:
+            root (Tk): The root window of the application.
+
+        returns:
+            None
+
+        raises:
+            None
+        """
+
+        # New subwindow
+        password_window = CTk.CTkFrame(master=self, width=300, height=150, fg_color="#2b2b2b", corner_radius=25)
+        password_window.pack(expand=True)
+        password_window.pack_propagate(False)
+
+        # Password label and entry
+        password_label = CTk.CTkLabel(master=password_window, 
+                                  text="Enter password", 
+                                  fg_color="white", 
+                                  bg_color="transparent")
+        password_label.pack(pady=10)
+
+        password_entry = CTk.CTkEntry(master=password_window, 
+                                  width=200,
+                                  justify="center",
+                                  fg_color="#2b2b2b", 
+                                  bg_color="transparent", 
+                                  border_color="#4a4d50", 
+                                  show="*")
+        password_entry.pack(pady=10)
+
+        # Confirm button
+        confirm_button = CTk.CTkButton(master=password_window, 
+                                   text="Confirm", 
+                                   button_size=(100, 50), 
+                                   text_color="white", 
+                                   fg_color="transparent", 
+                                   bg_color="transparent", 
+                                   border_color="#4a4d50", 
+                                   corner_radius=10, 
+                                   hover=True, 
+                                   command=self.email_handler.update_password(password=password_entry.get(), password_window=password_window))
+        confirm_button.pack(pady=10)
+
+    def show_email_compilation_window(self, root):
+        """
+        Show the email window.
+        """
+
+        # WINDOW_WIDTH, WINDOW_HEIGHT = root.winfo_screenwidth(), root.winfo_screenheight() # TODO figure out which is better
+        window_res = WINDOW_RESOLUTION.split('x')
+        WINDOW_WIDTH, WINDOW_HEIGHT = int(window_res[0]), int(window_res[1])
+        frame_width, frame_height = WINDOW_WIDTH*0.8, WINDOW_HEIGHT*0.8
+
+        # New subwindow
+        email_window = CTk.CTkFrame(master=self, width=frame_width, height=frame_height, fg_color="#2b2b2b", corner_radius=25)
+        email_window.pack(expand=True, anchor="center")
+        email_window.pack_propagate(False)
+
+        # Email label and relative entry
+        email_label: CTk.CTkLabel = CTk.CTkLabel(master=email_window, 
+                                                 text="Email",
+                                                 font=("Helvetica", 16),  # Set the font and size TODO do the same for all other labels (maybe add font size to config file and settings menu)
+                                                 fg_color="transparent", 
+                                                 bg_color="transparent")
+        email_entry: CTk.CTkEntry = CTk.CTkEntry(master=email_window,
+                                                 width=50,
+                                                 justify="center",
+                                                 fg_color="#2b2b2b",
+                                                 bg_color="transparent",
+                                                 border_width=2,
+                                                 border_color="#4a4d50")
+        
+        # Title label and relative entry
+        title_label: CTk.CTkLabel = CTk.CTkLabel(master=email_window, 
+                                                text="Title", 
+                                                fg_color="transparent", 
+                                                bg_color="transparent")
+        title_entry: CTk.CTkEntry = CTk.CTkEntry(master=email_window,
+                                                 width=50,
+                                                 justify="center",
+                                                 fg_color="#2b2b2b",
+                                                 bg_color="transparent",
+                                                 border_width=2,
+                                                 border_color="#4a4d50")
+
+        # Body label and relative entry
+        body_label: CTk.CTkLabel = CTk.CTkLabel(master=email_window, 
+                                                text="Body", 
+                                                font=("Helvetica", 16),
+                                                fg_color="transparent", 
+                                                bg_color="transparent")
+        body_entry: CTk.CTkEntry = CTk.CTkTextbox(master=email_window,
+                                                  width=450,
+                                                  height=300,
+                                                  fg_color="#2b2b2b",
+                                                  bg_color="transparent",
+                                                  border_width=2,
+                                                  border_color="#4a4d50")
+
+        # Send and autenthicate with google button
+        google_auth_button: CTk.CTkButton = create_button(master=email_window,
+                                                          text="Send and authenticate with Google",
+                                                          button_size=(100, 50),
+                                                          text_color="white",
+                                                          fg_color="transparent",
+                                                          bg_color="transparent",
+                                                          border_width=2,
+                                                          border_color="#4a4d50",
+                                                          corner_radius=10,
+                                                          should_be_placed=False,
+                                                          hover=True,
+                                                          command= lambda: (email_window.destroy(), self.email_handler.send_bug_report(title=title_entry.get(), body=body_entry.get(), message_box_root_window=root, mode="google-auth")))
+
+        # Send and enter password button
+        send_button: CTk.CTkButton = create_button(master=email_window,
+                                                   text="Send and enter password",
+                                                   button_size=(100, 50),
+                                                   text_color="white",
+                                                   fg_color="transparent",
+                                                   bg_color="transparent",
+                                                   border_color="#4a4d50",
+                                                   corner_radius=10,
+                                                   should_be_placed=False,
+                                                   hover=True,
+                                                   command= lambda: (email_window.destroy(), self.email_handler.send_bug_report(title=title_entry.get(), body=body_entry.get(), message_box_root_window=root, mode="config-credentials")))
+        
+        # Pack the widgets
+        email_label.pack(expand=True, anchor="center")
+        email_entry.pack(expand=True, anchor="center")
+
+        title_label.pack(expand=True, anchor="center")
+        title_entry.pack(expand=True, anchor="center")
+
+        body_label.pack(expand=True, anchor="center")
+        body_entry.pack(expand=True, anchor="center")
+
+        google_auth_button.pack(expand=True, anchor="center")
+
+        send_button.pack(expand=True, anchor="center")
+
+    # Setter functions
     def set_use_cropped_images(value: bool) -> None:
         """
         Set the use cropped images variable in the ydk parser.
@@ -420,6 +608,23 @@ class App(CTk.CTk):
         arrow_color = arrow_color_entry.get()
         arrow_color_entry.configure(textvariable=StringVar(value=canvas_color_entry.get()))
         canvas_color_entry.configure(textvariable=StringVar(value=arrow_color))
+
+    # Helper functions
+
+    async def process_clear_cache_button_press(self) -> None:
+        """
+        Clears all the cache and then disables the clear cache button.
+
+        params:
+            None
+        raises:
+            None
+        returns:
+            None
+        """
+
+        await self.ydk_parser.clear_cache() # Clear the cache
+        self.clear_cache_button.configure(state='disabled') # Disable the clear cache button
 
 if __name__ == "__main__":
     app = App()
