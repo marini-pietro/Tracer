@@ -1,7 +1,8 @@
 import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'CTkColorPicker')) # Add the CTkColorPicker module path to sys.path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'CTkColorPicker')) # Add the CTkColorPicker module path to sys.path to allow importing the module TODO find a better way to do this
 del sys
 
+# Import pip installed modules, if installation fails, install the required packages and retry the import
 try:
     import customtkinter as CTk
     from tkinter import filedialog, StringVar, TOP, BOTH
@@ -10,15 +11,18 @@ except ImportError:
     import customtkinter as CTk
     from tkinter import filedialog, StringVar
 
-from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS, REPO_URL, USE_CROPPED_IMAGES # Import everything from config.py without having to name it every time
+# Built in and code defined modules
+from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS, REPO_URL, USE_CROPPED_IMAGES
 from utils import clear_cache_button_logic, create_img, create_button # Import the necessary functions from utils.py
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
+del ctypes
 from apihandler import APIHandler
 from ydkparser import YDKParser
 from loghandler import LogHandler
 from canvashandler import CanvasHandler
+from emailhandler import EmailHandler
 from card import Card
 from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
 from asyncio import run as asyncio_run
@@ -43,6 +47,7 @@ class App(CTk.CTk):
         self.api_handler = APIHandler(log_handler=self.log_handler)
         self.ydk_parser = YDKParser(api_handler=self.api_handler, log_handler=self.log_handler)
         self.canvas_handler = CanvasHandler(log_handler=self.log_handler, ydk_parser=self.ydk_parser, api_handler=self.api_handler)
+        self.email_handler = EmailHandler(log_handler=self.log_handler)
         self.card_objects: list[list[Card], list[Card], list[Card]] = [[ ], [ ], [ ]] # List containing the card objects to be displayed on the canvas
 
         # Set centered window title and icon
@@ -342,7 +347,7 @@ class App(CTk.CTk):
         report_bug_button = create_button(master=settings_frame,
                                           text="Report a bug",
                                           button_size=(100, 50),
-                                          command=lambda: os.system(f"start {REPO_URL}/issues"),
+                                          command= lambda: self.email_handler.show_report_modality_window(root=self),
                                           text_color='white', 
                                           fg_color="transparent",
                                           border_color='#4a4d50',
