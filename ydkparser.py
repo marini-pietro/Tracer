@@ -14,7 +14,6 @@ class YDKParser:
         self.api_handler = api_handler
         self.log_handler = log_handler
         self.app = None
-        self.deck_positions: dict[str, int] = {"main": 0, "extra": 1, "side": 2}
 
         self.semaphore = asyncio.Semaphore(20) # create a semaphore to limit the number of concurrent requests to 20
         self.lock = asyncio.Lock() # create a lock to ensure thread safety when writing to the self.card_img_paths_list
@@ -36,49 +35,59 @@ class YDKParser:
             the third list contains the side deck.
         """        
 
-        with open(ydk_file, "r") as f:
-            for line in f:
-                line = line.strip() # remove leading and trailing whitespaces from the line (necessary for the following if statements)
+        ids_already_processed = [] # list of card ids that have already been processed (useful to minimize the number of necessary operations while discarting possible duplicates)
+
+        with open(ydk_file, "r") as file:
+            for line in file:
+                line = line[:-1] # remove the newline character at the end of the line
                 if line == "#main":
-                    position = self.deck_positions["main"]
+                    position = "main"
                     continue
                 elif line == "#extra":
-                    position = self.deck_positions["extra"]
+                    position = "extra"
                     continue
                 elif line == "!side":
-                    position = self.deck_positions["side"]
+                    position = "side"
                     continue
                 elif line == "": continue # skip empty lines
 
-                
+                has_api_been_called: bool = False # Flag to keep track if the API has been called for the card data (if it is not in a loop there is no need to wait to respect the API limit)
+                card_data: dict = {} # The card data dictionary
+
                 if not os.path.exists(os.path.join("data", "card_data", f"{line}.json")): # If the card data is not cached, request it from the API
+                    has_api_been_called = True
                     card_data: dict = self.api_handler.request_card_data(search_data={"id": line})
                 else: # If the card data is cached, read it from the file
                     with open(os.path.join("data", "card_data", f"{line}.json"), "r") as json_file:
                         card_data = json.load(json_file)
+                    json_file.close()
 
                 self.card_data_output.append(card_data) # add the card data to the list of card data
-                
                 self.card_imgs_urls.append(
-                                    [card_data["data"][0]["card_images"][0]["image_url"], 
-                                     card_data["data"][0]["card_images"][0]["image_url_small"],
-                                     card_data["data"][0]["card_images"][0]["image_url_cropped"]]) # add the card image URLs to the list of card image URLs
+                                        [card_data["data"][0]["card_images"][0]["image_url"], 
+                                        card_data["data"][0]["card_images"][0]["image_url_small"],
+                                        card_data["data"][0]["card_images"][0]["image_url_cropped"]]) # add the card image URLs to the list of card image URL
 
                 card_type: str = card_data["data"][0]["type"] # get the card type from the card data
 
-                self.app.card_objects.append(
-                    Card(card_id=line,
-                         card_type=card_type,
-                         level=card_data["data"][0]["level"] if card_type not in ["Spell Card", "Trap Card"] else None,
-                         atk=card_data["data"][0]["atk"] if card_type not in ["Spell Card", "Trap Card"] else None,
-                         def_=card_data["data"][0]["def"] if card_type not in ["Spell Card", "Trap Card"] else None,
-                         race=card_data["data"][0]["race"] if card_type not in ["Spell Card", "Trap Card"] else None,
-                         attribute=card_data["data"][0]["attribute"] if card_type not in ["Spell Card", "Trap Card"] else None,
-                         effect=card_data["data"][0]["desc"] if "desc" in card_data["data"][0] else None,
-                         deck_type=position)
-                )
+                # Check if the card is not already in the list of card objects
+                if not line in ids_already_processed:
+                    ids_already_processed.append(line) # add the card id to the list of card ids that have already been processed
+                    self.app.card_objects[position].append( # add the card object to the list of card objects
+                        Card(card_id=line,
+                             name=card_data["data"][0]["name"],
+                             card_type=card_type,
+                             level=card_data["data"][0]["level"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                             atk=card_data["data"][0]["atk"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                             def_=card_data["data"][0]["def"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                             race=card_data["data"][0]["race"],
+                             attribute=card_data["data"][0]["attribute"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                             effect=card_data["data"][0]["desc"] if "desc" in card_data["data"][0] else None,
+                             deck_type=position)
+                    )
 
-                time.sleep(0.05) # sleep for 50 milliseconds to limit to 20 requests per second
+                if has_api_been_called: time.sleep(0.05) # sleep for 50 milliseconds to limit to 20 requests per second (API limit)
+                # (with other operations in the loop this could not be necessary but keeping is necessary to avoid possible bans from the API)
 
         # Cache the images asynchronously
         asyncio.run(self.cache_data())
@@ -87,11 +96,14 @@ class YDKParser:
         asyncio.run(self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}."))
 
         # Create the card images (not possible in the loop that reads the file because the images need to be cached first)
-        #[card.create_images(img_root_window=self.app.canvas_handler.cards_list_frame) for card in self.app.card_objects]
+        for deck_type in self.app.card_objects:
+            for card in self.app.card_objects[deck_type]:
+                card.create_images(img_root_window=self.app.canvas_handler.cards_list_frame)
 
         # Delete the card data and card image URLs lists to free up memory
         self.card_data_output = []
         self.card_imgs_urls = []
+        del ids_already_processed
 
     def write_ydk(self, ydk_file_name): # TODO implement ydk writing
         """
@@ -216,7 +228,7 @@ class YDKParser:
 
         # Delete images
         BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
-        for img_type in ["cards", "cards_small", "cards_cropped"]:
+        for img_type in ["cards", "cards_small", "cards_cropped", "cards_cropped_small"]:
             img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type)
             for img in os.listdir(img_path):
                 final_path = os.path.join(img_path, img)

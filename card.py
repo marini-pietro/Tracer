@@ -3,18 +3,21 @@ from os import path as os_path
 from utils import create_img
 
 try:
-   from customtkinter import CTkLabel
+   from customtkinter import CTkLabel, CTkImage
+   from PIL import Image
 except ImportError:
-    cmd('pip install customtkinter')
-    from customtkinter import CTkLabel
+    cmd('pip install -r requirements.txt')
+    from PIL import Image
+    from customtkinter import CTkLabel, CTkImage
 
 class Card():
     def __init__(self,
                  card_id: str | int,
+                 name: str,
                  effect: str, 
                  level: int,
-                 atk: int,
-                 def_: int,
+                 atk: int | str,
+                 def_: int | str,
                  race: str,
                  attribute: str,
                  deck_type: str,
@@ -36,22 +39,37 @@ class Card():
             raise TypeError(f"Expected str, got {type(effect)}")
 
         # Set the attributes
-        self.effect = effect
-        self.level = level
-        self.atk = atk
-        self.def_ = def_
-        self.race = race
-        self.attribute = attribute
         self.card_id = card_id
         self.deck_type = deck_type
         self.card_type = card_type
+        self.name = name # The name of the card
+        self.attribute = attribute # The attribute of the card (e.g. "Fire", "Water", "Earth", "Wind", "Light", "Dark", "Divine") (checking if the card is a monster has to be handled externally to avoid needing to pas all the json data which would uselessly increasing the memory usage)
+        self.race = race # The sub-type of the card (e.g. "Warrior", "Spellcaster", "Equip", "Continuos", etc.)
+        self.effect = effect.replace(". ", ".\n") # The effect of the card (replace the line breaks with new lines and the line)
+        if card_type in ["Link Monster", "Xyz Monster", "Synchro Monster", "Fusion Monster"]: # If the card is an extra deck (so if it has a summoning requirement)
+            self.effect.replace("\r\n", "\n\n") # Replace the line breaks with two new lines
+        
+        self.level = level if "Monster" in card_type else None # If the card is a monster card
+        if atk == -1: self.atk = "?" # If the card has unknown attack
+        elif atk == None : self.atk = None 
+        else: self.atk = atk
+        
+        if def_ == -1: self.def_ = "?" # If the card has unknown defense
+        elif def_ == None : self.def_ = None  # If the
+        else: self.def_ = def_ 
+
+        # Handle images paths and objects
         self.images_paths: dict[str, str] = {
-            "normal": os_path.join("data", "img", "cached_images", "cards", "{card_id}.jpg").format(card_id=card_id),
-            "small": os_path.join("data", "img", "cached_images", "cards_small", "{card_id}.jpg").format(card_id=card_id),
-            "cropped": os_path.join("data", "img", "cached_images", "cards_cropped", "{card_id}.jpg").format(card_id=card_id)
+            "normal": os_path.join("data", "img", "cached_images", "cards", f"{card_id}.jpg"),
+            "small": os_path.join("data", "img", "cached_images", "cards_small", f"{card_id}.jpg"),
+            "cropped": os_path.join("data", "img", "cached_images", "cards_cropped", f"{card_id}.jpg"),
+            "cropped_small": os_path.join("data", "img", "cached_images", "cards_cropped_small", f"{card_id}.jpg")
         }
 
+        self.pillow_images: dict[str, Image.Image] = {}
+
         self.images: dict[str, CTkLabel] = {}
+        
         
     def create_images(self, img_root_window):
         """
@@ -64,17 +82,40 @@ class Card():
         Raises:
             None
         """
+        # TODO maybe add the option for images with rounded corners
+
+        self.pillow_images: dict[str, Image.Image] = {
+            "normal": Image.open(self.images_paths["normal"]),
+            "small": Image.open(self.images_paths["small"]),
+            "cropped": Image.open(self.images_paths["cropped"]),
+            "cropped_small": Image.open(self.images_paths["cropped_small"] if os_path.exists(self.images_paths["cropped_small"]) 
+                                                                           else self.images_paths["cropped"]).resize((int(624 * 0.3), int(624 * 0.3)), resample=Image.LANCZOS)
+        }
+
+        if not os_path.exists(self.images_paths["cropped_small"]): # If the image is not cached create it
+            self.pillow_images["cropped_small"].save(os_path.join("data", "img", "cached_images", "cards_cropped_small", f"{self.card_id}.jpg")) # Cache the image
 
         self.images: dict[str, CTkLabel] = {
-            "normal": create_img(master=img_root_window, 
-                       img_path=self.images_paths["normal"],
-                       should_be_placed=False),
-            "small": create_img(master=img_root_window,
-                      img_path=self.images_paths["small"],
-                      should_be_placed=False),
-            "cropped": create_img(master=img_root_window,
-                        img_path=self.images_paths["cropped"],
-                        should_be_placed=False)
+            "normal": CTkLabel(master=img_root_window,
+                               image=CTkImage(self.pillow_images["normal"]),
+                               width=self.pillow_images["normal"].width,
+                               height=self.pillow_images["normal"].height,
+                               text=""),
+            "small": CTkLabel(master=img_root_window,
+                              image=CTkImage(self.pillow_images["small"]),
+                              width=self.pillow_images["small"].width,
+                              height=self.pillow_images["small"].height,
+                              text=""),
+            "cropped": CTkLabel(master=img_root_window,
+                                image=CTkImage(self.pillow_images["cropped"]),
+                                width=self.pillow_images["cropped"].width,
+                                height=self.pillow_images["cropped"].height,
+                                text=""),
+            "cropped_small": CTkLabel(master=img_root_window, 
+                                     image=CTkImage(self.pillow_images["cropped_small"], size=(self.pillow_images["cropped_small"].width, self.pillow_images["cropped_small"].height)),
+                                     width=self.pillow_images["cropped_small"].width,
+                                     height=self.pillow_images["cropped_small"].height,
+                                     text="")
         }
 
     def get_data_json(self):

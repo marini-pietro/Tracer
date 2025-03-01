@@ -1,6 +1,4 @@
-import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'CTkColorPicker')) # Add the CTkColorPicker module path to sys.path to allow importing the module TODO find a better way to do this
-del sys
+import os
 
 # Import pip installed modules, if installation fails, install the required packages and retry the import
 try:
@@ -11,13 +9,16 @@ except ImportError:
     import customtkinter as CTk
     from tkinter import filedialog, StringVar
 
+del os
+
 # Built in and code defined modules
-from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS, REPO_URL, USE_CROPPED_IMAGES, EMAIL_CONFIG
+from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS, REPO_URL, USE_CROPPED_IMAGES
 from utils import clear_cache_button_logic, create_img, create_button # Import the necessary functions from utils.py
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
 del ctypes
+from .CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
 from apihandler import APIHandler
 from ydkparser import YDKParser
 from loghandler import LogHandler
@@ -48,7 +49,9 @@ class App(CTk.CTk):
         self.ydk_parser = YDKParser(api_handler=self.api_handler, log_handler=self.log_handler)
         self.canvas_handler = CanvasHandler(log_handler=self.log_handler, ydk_parser=self.ydk_parser, api_handler=self.api_handler)
         self.email_handler = EmailHandler(log_handler=self.log_handler)
-        self.card_objects: list[list[Card], list[Card], list[Card]] = [[ ], [ ], [ ]] # List containing the card objects to be displayed on the canvas
+        self.card_objects: dict[list[Card], list[Card], list[Card]] = {"main": [ ],
+                                                                       "extra": [ ], 
+                                                                       "side": [ ]} # Important: the cards should be unique, no duplicates
 
         # Set centered window title and icon
         self.title("Tracer") # TODO center the title string
@@ -266,10 +269,10 @@ class App(CTk.CTk):
             ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
             self.ydk_parser.read_ydk(ydk_path) # Read the ydk file, cache the data and create and store the card objects into the card_objects list
 
-            for size in ["small", "medium", "large"]: # TODO figure out why the images do not appear in cards tab
-                for card in self.card_objects[["small", "medium", "large"].index(size)]:
-                    card.images[size].pack()
-
+            if USE_CROPPED_IMAGES:
+                for i, card in enumerate(self.card_objects["main"]): # For each card in the main deck
+                    card.images["cropped_small"].grid(row=i // 3, column=i % 3, padx=5, pady=5) # Pack the cropped small images in a grid with 3 per row
+                    card.images["cropped_small"].bind("<Button-1>", lambda _, card=card: self.canvas_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
         else:
             self.canvas_handler.cards_empty_label.pack() # Show the empty label if the user did not import ydk
 

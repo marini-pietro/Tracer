@@ -11,12 +11,14 @@ log.txt
 data/img/cached_images/cards/*.jpg
 data/img/cached_images/cards_small/*.jpg
 data/img/cached_images/cards_cropped/*.jpg
+data/img/cached_images/cards_cropped_small/*.jpg
 data/card_data/*.json
 
 # Keep the folders but not the contents
 !data/img/cached_images/cards/
 !data/img/cached_images/cards_small/
 !data/img/cached_images/cards_cropped/
+!data/img/cached_images/cards_cropped_small/
 !data/card_data/
 
 # C extensions
