@@ -3,22 +3,22 @@ import os
 # Import pip installed modules, if installation fails, install the required packages and retry the import
 try:
     import customtkinter as CTk
-    from tkinter import filedialog, StringVar
+    from CTkMessagebox import CTkMessagebox
+    from tkinter import filedialog, StringVar, BooleanVar
 except ImportError:
     os.system("pip install -r requirements.txt") # Install the required packages
     import customtkinter as CTk
-    from tkinter import filedialog, StringVar
-
-del os
+    from CTkMessagebox import CTkMessagebox
+    from tkinter import filedialog, StringVar, BooleanVar
 
 # Built in and code defined modules
-from config import APPEARENCE_MODE, APP_ID, WINDOW_RESOLUTION, DEFAULT_COLORS, REPO_URL, USE_CROPPED_IMAGES
-from utils import clear_cache_button_logic, create_img, create_button # Import the necessary functions from utils.py
+import config
+from utils import clear_cache_button_logic, create_img, create_button, set_config_variable # Import the necessary functions from utils.py
 import ctypes
 ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(config.APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
 del ctypes
-from .CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
+from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
 from apihandler import APIHandler
 from ydkparser import YDKParser
 from loghandler import LogHandler
@@ -29,15 +29,15 @@ from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
 from asyncio import run as asyncio_run
 
 # Initialize constants
-resolution_split: list[str] = WINDOW_RESOLUTION.split("x")
+resolution_split: list[str] = config.WINDOW_RESOLUTION.split("x")
 WINDOW_WIDTH, WINDOW_HEIGHT = int(resolution_split[0]),int(resolution_split[1])
 
 class App(CTk.CTk):
     def __init__(self):
         # Initialize the main window
-        CTk.set_appearance_mode(APPEARENCE_MODE) # Set the appearance mode
+        CTk.set_appearance_mode(config.APPEARENCE_MODE) # Set the appearance mode
         super().__init__()  # Initialize the CTk window
-        self.geometry(WINDOW_RESOLUTION) # Set the window resolution
+        self.geometry(config.WINDOW_RESOLUTION) # Set the window resolution
         self.resizable(False, False) # Disable window resizing
         self.grid_columnconfigure(0, weight=1) # Set the column to expand with the window
         self.grid_rowconfigure(0, weight=1) # Set the row to expand with the window
@@ -109,7 +109,7 @@ class App(CTk.CTk):
 
         # Technically a label but will behave like a button (using a label do not add code to the create_button function that will be used almost never)
         self.settings_button: CTk.CTkLabel = create_img(master=self,
-                                                        img_path="data/img/settings_light.png" if APPEARENCE_MODE == "dark" else "data/img/settings_dark.png",
+                                                        img_path="data/img/settings_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/settings_dark.png",
                                                         img_position=(WINDOW_WIDTH-50, 50),
                                                         anchor="center",
                                                         scale=0.1) # Load the settings button
@@ -142,7 +142,7 @@ class App(CTk.CTk):
 
         # Create a button to close the new sheet window
         close_button = create_img(master=new_frame,
-                                  img_path="data/img/cross_light.png" if APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
+                                  img_path="data/img/cross_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
                                   should_be_placed=False,
                                   scale=0.15) # Load the close button
         close_button.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
@@ -176,7 +176,7 @@ class App(CTk.CTk):
                                           width=100, 
                                           height=25, 
                                           font=("Helvetica", 14), 
-                                          textvariable=StringVar(value=DEFAULT_COLORS["CANVAS"]), 
+                                          textvariable=StringVar(value=config.DEFAULT_COLORS["CANVAS"]), 
                                           justify="center",
                                           corner_radius=10)
         canvas_entry_button = create_button(master=canvas_color_frame, 
@@ -203,7 +203,7 @@ class App(CTk.CTk):
                                          width=100, 
                                          height=25, 
                                          font=("Helvetica", 14), 
-                                         textvariable=StringVar(value=DEFAULT_COLORS["ARROW"]), 
+                                         textvariable=StringVar(value=config.DEFAULT_COLORS["ARROW"]), 
                                          justify="center",
                                          corner_radius=10)
         arrow_color_entry_button = create_button(master=arrow_color_frame, 
@@ -223,11 +223,15 @@ class App(CTk.CTk):
 
         # Create button to swap the colors
         swap_colors_button = create_img(master=new_frame,
-                                        img_path="data/img/swap_light.png" if APPEARENCE_MODE == "dark" else "data/img/swap_dark.png",
+                                        img_path="data/img/swap_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/swap_dark.png",
                                         should_be_placed=False,
                                         scale=0.1)
         swap_colors_button.place(relx=0, rely=0.5, anchor="w", x=25, y=0)
-        swap_colors_button.bind("<Button-1>", lambda _: self.swap_colors(arrow_color_entry, canvas_color_entry))
+        def swap_colors():
+            arrow_color = arrow_color_entry.get()
+            arrow_color_entry.configure(textvariable=StringVar(value=canvas_color_entry.get()))
+            canvas_color_entry.configure(textvariable=StringVar(value=arrow_color))
+        swap_colors_button.bind("<Button-1>", swap_colors)    
 
         # Create a button to submit the input
         submit_button = create_button(master=new_frame, 
@@ -269,7 +273,7 @@ class App(CTk.CTk):
             ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
             self.ydk_parser.read_ydk(ydk_path) # Read the ydk file, cache the data and create and store the card objects into the card_objects list
 
-            if USE_CROPPED_IMAGES:
+            if config.USE_CROPPED_IMAGES:
                 for i, card in enumerate(self.card_objects["main"]): # For each card in the main deck
                     card.images["cropped_small"].grid(row=i // 3, column=i % 3, padx=5, pady=5) # Pack the cropped small images in a grid with 3 per row
                     card.images["cropped_small"].bind("<Button-1>", lambda _, card=card: self.canvas_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
@@ -326,7 +330,7 @@ class App(CTk.CTk):
 
         # Close button
         close_button: CTk.CTkLabel = create_img(master=settings_frame,
-                                                img_path="data/img/cross_light.png" if APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
+                                                img_path="data/img/cross_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
                                                 should_be_placed=False,
                                                 scale=0.15) # Load the close button
         close_button.place(relx=1.0, rely=0, anchor="ne", x=-10, y=10)
@@ -335,16 +339,31 @@ class App(CTk.CTk):
         # Appearance mode switch
         appearance_mode_switch = CTk.CTkSwitch(settings_frame, 
                                                text="Dark mode",
-                                               progress_color="#4a4d50") # Create the appearance mode switch
-        if APPEARENCE_MODE == "dark": appearance_mode_switch.select()  # Set the switch to the current appearance mode
+                                               progress_color="#4a4d50",
+                                               onvalue="dark",
+                                               offvalue="light",
+                                               command= lambda: set_config_variable(variable_name="APPEARENCE_MODE", value="dark" if appearance_mode_switch.get() == "dark" else "light")) # Create the appearance mode switch
+        # Set the switch to the current appearance mode
+        if config.APPEARENCE_MODE == "dark": appearance_mode_switch.select() 
         else: appearance_mode_switch.deselect()
         appearance_mode_switch.place(relx=0.5, rely=0.5, anchor="center", y=-25) # Place the switch
+
+        # Use cropped images switch
+        use_cropped_images_switch = CTk.CTkSwitch(settings_frame,
+                                                  text="Use cropped images",
+                                                  progress_color="#4a4d50",
+                                                  onvalue="yes",
+                                                  offvalue="no",
+                                                  command=lambda: set_config_variable(variable_name="USE_CROPPED_IMAGES", value=True if use_cropped_images_switch.get() == "yes" else False)) # Create the use cropped images switch
+        if config.USE_CROPPED_IMAGES: use_cropped_images_switch.select()
+        else: use_cropped_images_switch.deselect()
+        use_cropped_images_switch.place(relx=0.5, rely=0.5, anchor="center", y=25)
 
         # Report bug button
         report_bug_button = create_button(master=settings_frame,
                                           text="Report a bug",
                                           button_size=(100, 50),
-                                          command= lambda: self.show_report_modality_window(root=self), 
+                                          command= lambda: self.show_report_modality_window(), 
                                           text_color='white', 
                                           fg_color="transparent",
                                           border_color='#4a4d50',
@@ -353,22 +372,13 @@ class App(CTk.CTk):
                                           hover=True)
         report_bug_button.place(relx=0.5, rely=0.6, anchor="center", y=25)
 
-        # Use cropped images switch
-        use_cropped_images_switch = CTk.CTkSwitch(settings_frame,
-                                                  text="Use cropped images",
-                                                  progress_color="#4a4d50",
-                                                  command=lambda: self.set_use_cropped_images(use_cropped_images_switch.get()))
-        if USE_CROPPED_IMAGES: use_cropped_images_switch.select()
-        else: use_cropped_images_switch.deselect()
-        use_cropped_images_switch.place(relx=0.5, rely=0.5, anchor="center", y=25)
-        
         # Github link button
         github_link_button = create_img(master=settings_frame,
-                img_path="data/img/github_light.png" if APPEARENCE_MODE == "dark" else "data/img/github_dark.png",
+                img_path="data/img/github_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/github_dark.png",
                 should_be_placed=False,
                 scale=0.1) # Load the github link button
         github_link_button.place(relx=0.4, rely=0.9, anchor="center")
-        github_link_button.bind("<Button-1>", lambda _: os.system(f"start {REPO_URL}")) # Bind the github link button to a function
+        github_link_button.bind("<Button-1>", lambda _: os.system(f"start {config.REPO_URL}")) # Bind the github link button to a function
 
         # Master Duel Meta link button
         master_duel_meta_link_button = create_img(master=settings_frame,
@@ -392,7 +402,7 @@ class App(CTk.CTk):
         """
 
         # WINDOW_WIDTH, WINDOW_HEIGHT = root.winfo_screenwidth(), root.winfo_screenheight() # TODO figure out which is better
-        WINDOW_WIDTH, WINDOW_HEIGHT = int(WINDOW_RESOLUTION.split('x')[0]), int(WINDOW_RESOLUTION.split('x')[1])
+        WINDOW_WIDTH, WINDOW_HEIGHT = int(config.WINDOW_RESOLUTION.split('x')[0]), int(config.WINDOW_RESOLUTION.split('x')[1])
         frame_width, frame_height = WINDOW_WIDTH*0.8, WINDOW_HEIGHT*0.8
 
         # New subwindow
@@ -402,7 +412,7 @@ class App(CTk.CTk):
 
         # Close button
         close_button: CTk.CTkLabel = create_img(master=modality_window,
-                                                img_path="data/img/cross_light.png" if APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
+                                                img_path="data/img/cross_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
                                                 should_be_placed=False,
                                                 scale=0.15) # Load the close button
         close_button.pack(side="top", anchor="ne", padx=10, pady=10)
@@ -419,7 +429,7 @@ class App(CTk.CTk):
                                                               corner_radius=10,
                                                               should_be_placed=False,
                                                               hover=True,
-                                                              command= lambda: os.system(f"start {REPO_URL}/issues/new")) # Open the github issues page
+                                                              command= lambda: os.system(f"start {config.REPO_URL}/issues/new")) # Open the github issues page
         report_as_email_button: CTk.CTkButton = create_button(master=modality_window,
                                                               text="Report as email",
                                                               button_size=(100, 50),
@@ -489,7 +499,7 @@ class App(CTk.CTk):
         """
 
         # WINDOW_WIDTH, WINDOW_HEIGHT = root.winfo_screenwidth(), root.winfo_screenheight() # TODO figure out which is better
-        window_res = WINDOW_RESOLUTION.split('x')
+        window_res = config.WINDOW_RESOLUTION.split('x')
         WINDOW_WIDTH, WINDOW_HEIGHT = int(window_res[0]), int(window_res[1])
         frame_width, frame_height = WINDOW_WIDTH*0.8, WINDOW_HEIGHT*0.8
 
@@ -505,7 +515,7 @@ class App(CTk.CTk):
                                                  fg_color="transparent", 
                                                  bg_color="transparent")
         email_entry: CTk.CTkEntry = CTk.CTkEntry(master=email_window,
-                                                 width=50,
+                                                 width=250,
                                                  justify="center",
                                                  fg_color="#2b2b2b",
                                                  bg_color="transparent",
@@ -515,15 +525,17 @@ class App(CTk.CTk):
         # Title label and relative entry
         title_label: CTk.CTkLabel = CTk.CTkLabel(master=email_window, 
                                                 text="Title", 
+                                                font=("Helvetica", 16),
                                                 fg_color="transparent", 
                                                 bg_color="transparent")
         title_entry: CTk.CTkEntry = CTk.CTkEntry(master=email_window,
-                                                 width=50,
+                                                 width=250,
                                                  justify="center",
                                                  fg_color="#2b2b2b",
                                                  bg_color="transparent",
                                                  border_width=2,
                                                  border_color="#4a4d50")
+        if config.EMAIL_CONFIG["email_address"] != "": email_entry.insert(0, config.EMAIL_CONFIG["email_address"]) # If the email address is already set, insert it into the entry
 
         # Body label and relative entry
         body_label: CTk.CTkLabel = CTk.CTkLabel(master=email_window, 
@@ -533,11 +545,21 @@ class App(CTk.CTk):
                                                 bg_color="transparent")
         body_entry: CTk.CTkEntry = CTk.CTkTextbox(master=email_window,
                                                   width=450,
-                                                  height=300,
+                                                  height=200,
                                                   fg_color="#2b2b2b",
                                                   bg_color="transparent",
                                                   border_width=2,
                                                   border_color="#4a4d50")
+
+        # Checkbox to remember the email address
+        remember_email: BooleanVar = BooleanVar(value=False)
+        remember_email_checkbox: CTk.CTkCheckBox = CTk.CTkCheckBox(master=email_window,
+                                                                   text="Remember email address",
+                                                                   fg_color="white",
+                                                                   bg_color="transparent",
+                                                                   corner_radius=10,
+                                                                   hover=True,
+                                                                   variable=remember_email) # Set the remember email variable to true if the checkbox is checked
 
         # Send and autenthicate with google button
         google_auth_button: CTk.CTkButton = create_button(master=email_window,
@@ -551,7 +573,12 @@ class App(CTk.CTk):
                                                           corner_radius=10,
                                                           should_be_placed=False,
                                                           hover=True,
-                                                          command= lambda: (email_window.destroy(), self.email_handler.send_bug_report(title=title_entry.get(), body=body_entry.get(), message_box_root_window=root, mode="google-auth")))
+                                                          command=lambda: (self.show_email_warning_messagebox(title=title_entry.get(), 
+                                                                                                              email=email_entry.get(),
+                                                                                                              body=body_entry.get("1.0", "end-1c"),
+                                                                                                              mode="google-auth"),
+                                                                           email_window.destroy(),
+                                                                           set_config_variable(variable_name="email_address", value=email_entry.get()) if remember_email else None))
 
         # Send and enter password button
         send_button: CTk.CTkButton = create_button(master=email_window,
@@ -564,53 +591,65 @@ class App(CTk.CTk):
                                                    corner_radius=10,
                                                    should_be_placed=False,
                                                    hover=True,
-                                                   command= lambda: (email_window.destroy(), self.email_handler.send_bug_report(title=title_entry.get(), body=body_entry.get(), message_box_root_window=root, mode="config-credentials")))
+                                                   command= lambda: (self.show_email_warning_messagebox(title=title_entry.get(), 
+                                                                                                        email=email_entry.get(),
+                                                                                                        body=body_entry.get(), 
+                                                                                                        mode="config-credentials"),
+                                                                     email_window.destroy(),
+                                                                     set_config_variable(variable_name="email_address", value=email_entry.get()) if remember_email else None))
         
         # Pack the widgets
-        email_label.pack(expand=True, anchor="center")
-        email_entry.pack(expand=True, anchor="center")
+        email_label.pack(pady=(10, 5), anchor="center", expand=True)
+        email_entry.pack(pady=(5, 10), anchor="center", expand=True)
 
-        title_label.pack(expand=True, anchor="center")
-        title_entry.pack(expand=True, anchor="center")
+        title_label.pack(pady=(10, 5), anchor="center", expand=True)
+        title_entry.pack(pady=(5, 10), anchor="center", expand=True)
 
-        body_label.pack(expand=True, anchor="center")
-        body_entry.pack(expand=True, anchor="center")
+        body_label.pack(pady=(10, 5), anchor="center", expand=True)
+        body_entry.pack(pady=(5, 10), anchor="center", expand=True)
 
-        google_auth_button.pack(expand=True, anchor="center")
+        remember_email_checkbox.pack(pady=(10, 5), anchor="center", expand=True)
 
-        send_button.pack(expand=True, anchor="center")
+        google_auth_button.pack(pady=(10, 5), anchor="center", expand=True)
+        send_button.pack(pady=(5, 10), anchor="center", expand=True)
 
-    # Setter functions
-    def set_use_cropped_images(value: bool) -> None:
+    def show_email_warning_messagebox(self, title: str, email: str, body: str, mode: str) -> None:
         """
-        Set the use cropped images variable in the ydk parser.
-
+        Show a messagebox warning the user that the email might not arrive because of google authentication free tier API limits or that the authentication process might not be available because of google free tier API limits.
+        
         params:
-            use_cropped_images_switch (str): The state of the switch.
+            type (str): The type of the warning message. Can be "config-credentials" or "google-auth".
+            title (str): The title of the bug report.
+            email (str): The email address of the user.
+            body (str): The body of the bug report.
+            message_box_root_window (Tk): The root window of the application.
         raises:
             None
         returns:
             None
         """
-        
-        # Read the current contents of config.py
-        with open("config.py", "r") as file:
-            lines = file.readlines()
-        
-        # Modify the value of ASK_YDK_IMPORT_CONFIRMATION
-        for i, line in enumerate(lines):
-            if line.startswith("USE_CROPPED_IMAGES"):
-                lines[i] = f"USE_CROPPED_IMAGES = {value}\n"
-                break
-        
-        # Write the updated contents back to config.py
-        with open("config.py", "w") as file:
-            file.writelines(lines)
 
-    def swap_colors(self, arrow_color_entry, canvas_color_entry):
-        arrow_color = arrow_color_entry.get()
-        arrow_color_entry.configure(textvariable=StringVar(value=canvas_color_entry.get()))
-        canvas_color_entry.configure(textvariable=StringVar(value=arrow_color))
+        if mode not in ["config-credentials", "google-auth"]: raise ValueError(f"Invalid mode value: {mode}. Must be google-auth or config-credentials.")
+        if mode == "config-credentials":
+            message = "The email might not arrive because of google authentication free tier API limits.\nIf so, please try again later or submit the bug report as an issue on github."
+        elif mode == "google-auth":
+            message = "The authentication process might not be available because of google free tier API limits.\nIf so, please try again later or submit the bug report as an issue on github."
+        message_box: CTkMessagebox = CTkMessagebox(master=self, 
+                                                            title="Warning",
+                                                            message=message,
+                                                            icon="warning", 
+                                                            options=["Close"],
+                                                            justify="center")
+        
+        if message_box.get() == "Close": 
+            message_box.destroy()
+            self.email_handler.send_bug_report(title=title, 
+                                               email=email,
+                                               body=body, 
+                                               message_box_root_window=self, 
+                                               mode=mode)
+
+
 
     # Helper functions
 

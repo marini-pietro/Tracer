@@ -31,5 +31,6 @@ DEFAULT_COLORS = {
 # Email configuration
 EMAIL_CONFIG = {
     "email_address": "",
-    "email_password": ""
+    "email_password": "",
+    "email_recipient": "pietromarinivr2006@gmail.com",
 }

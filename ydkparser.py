@@ -1,10 +1,12 @@
+import os, time, json, asyncio
+
 try:
-    import os, aiohttp, asyncio, time, json
+    import aiohttp
     from tkinter import filedialog
 except ImportError:
     import os
     os.system("pip install -r requirements.txt")
-    import aiohttp, asyncio, time, json
+    import aiohttp
     from tkinter import filedialog
 
 from card import Card
@@ -68,7 +70,7 @@ class YDKParser:
                                         card_data["data"][0]["card_images"][0]["image_url_small"],
                                         card_data["data"][0]["card_images"][0]["image_url_cropped"]]) # add the card image URLs to the list of card image URL
 
-                card_type: str = card_data["data"][0]["type"] # get the card type from the card data
+                type: str = card_data["data"][0]["type"] # get the card type from the card data
 
                 # Check if the card is not already in the list of card objects
                 if not line in ids_already_processed:
@@ -76,12 +78,12 @@ class YDKParser:
                     self.app.card_objects[position].append( # add the card object to the list of card objects
                         Card(card_id=line,
                              name=card_data["data"][0]["name"],
-                             card_type=card_type,
-                             level=card_data["data"][0]["level"] if card_type not in ["Spell Card", "Trap Card"] else None,
-                             atk=card_data["data"][0]["atk"] if card_type not in ["Spell Card", "Trap Card"] else None,
-                             def_=card_data["data"][0]["def"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                             type=type,
+                             level=card_data["data"][0]["level"] if type not in ["Spell Card", "Trap Card"] else None,
+                             atk=card_data["data"][0]["atk"] if type not in ["Spell Card", "Trap Card"] else None,
+                             def_=card_data["data"][0]["def"] if type not in ["Spell Card", "Trap Card"] else None,
                              race=card_data["data"][0]["race"],
-                             attribute=card_data["data"][0]["attribute"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                             attribute=card_data["data"][0]["attribute"] if type not in ["Spell Card", "Trap Card"] else None,
                              effect=card_data["data"][0]["desc"] if "desc" in card_data["data"][0] else None,
                              deck_type=position)
                     )

@@ -1,6 +1,5 @@
 from os import system as cmd
 from os import path as os_path
-from utils import create_img
 
 try:
    from customtkinter import CTkLabel, CTkImage
@@ -21,7 +20,7 @@ class Card():
                  race: str,
                  attribute: str,
                  deck_type: str,
-                 card_type: str):
+                 type: str):
 
         # Check if arguments are valid and do the necessary conversions
         if not isinstance(card_id, str): 
@@ -41,15 +40,15 @@ class Card():
         # Set the attributes
         self.card_id = card_id
         self.deck_type = deck_type
-        self.card_type = card_type
+        self.type = type
         self.name = name # The name of the card
         self.attribute = attribute # The attribute of the card (e.g. "Fire", "Water", "Earth", "Wind", "Light", "Dark", "Divine") (checking if the card is a monster has to be handled externally to avoid needing to pas all the json data which would uselessly increasing the memory usage)
         self.race = race # The sub-type of the card (e.g. "Warrior", "Spellcaster", "Equip", "Continuos", etc.)
         self.effect = effect.replace(". ", ".\n") # The effect of the card (replace the line breaks with new lines and the line)
-        if card_type in ["Link Monster", "Xyz Monster", "Synchro Monster", "Fusion Monster"]: # If the card is an extra deck (so if it has a summoning requirement)
+        if type in ["Link Monster", "Xyz Monster", "Synchro Monster", "Fusion Monster"]: # If the card is an extra deck (so if it has a summoning requirement)
             self.effect.replace("\r\n", "\n\n") # Replace the line breaks with two new lines
         
-        self.level = level if "Monster" in card_type else None # If the card is a monster card
+        self.level = level if "Monster" in type else None # If the card is a monster card
         if atk == -1: self.atk = "?" # If the card has unknown attack
         elif atk == None : self.atk = None 
         else: self.atk = atk
