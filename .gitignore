@@ -7,6 +7,9 @@ CTkColorPicker/__pycache__/
 # Log file
 log.txt
 
+# Google API Client Secret Json
+client_secret_955126219072-1sqqr5se4taf4p3ago6jhj6p3ipo4jki.apps.googleusercontent.com.json
+
 # Cached data
 data/img/cached_images/cards/*.jpg
 data/img/cached_images/cards_small/*.jpg
