@@ -9,8 +9,11 @@ KNOWN_RESOLUTIONS = {
 WINDOW_RESOLUTION = KNOWN_RESOLUTIONS['720p']
 VERSION = '1.0'
 APP_ID = 'Tracer V' + VERSION
-APPEARENCE_MODE = 'dark' # dark, light or system
+# dark, light or system
+APPEARENCE_MODE = 'dark' 
 CARD_PER_ROW_IN_LIST = 3
+# The factor to resize the images to fit the grid
+LIST_IMAGE_RESIZING_FACTOR = 0.3
 USE_CROPPED_IMAGES = True
 REPO_URL = "https://github.com/marini-pietro/Tracer"
 

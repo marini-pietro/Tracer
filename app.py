@@ -4,11 +4,13 @@ import os
 try:
     import customtkinter as CTk
     from CTkMessagebox import CTkMessagebox
+    from PIL import Image
     from tkinter import filedialog, StringVar, BooleanVar
 except ImportError:
     os.system("pip install -r requirements.txt") # Install the required packages
     import customtkinter as CTk
     from CTkMessagebox import CTkMessagebox
+    from PIL import Image
     from tkinter import filedialog, StringVar, BooleanVar
 
 # Built in and code defined modules
@@ -54,68 +56,83 @@ class App(CTk.CTk):
                                                                        "side": [ ]} # Important: the cards should be unique, no duplicates
 
         # Set centered window title and icon
-        self.title("Tracer") # TODO center the title string
+        self.title("Tracer")
         if os.name == "nt": # If the OS is Windows
             self.iconbitmap("./data/img/icon.ico")
 
-        # Initial menu window widgets
-        self.main_logo_label: CTk.CTkLabel = create_img(master=self, 
-                                                        img_path="data/img/placeholder_icon.png", 
-                                                        img_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2 - 100), 
-                                                        anchor="center", 
-                                                        scale=0.75) # Load the main logo
-        
-        self.new_sheet_button: CTk.CTkButton = create_button(
-            master=self,
-            text="New Sheet",
-            button_position=(WINDOW_WIDTH//2-150, WINDOW_HEIGHT//2+200),
-            button_size=(100, 50),
-            text_color='white', 
-            fg_color="transparent",
-            border_color='#5b5b5b',
-            border_width=2,  # Set the border width
-            corner_radius=10, 
-            hover=True,
-            command=self.new_sheet_window # Bind the new sheet button to the function to create a new sheet
-        )
-        
-        self.import_sheet_button: CTk.CTkButton = create_button(
-            master=self,
-            text="Import Sheet",
-            button_position=(WINDOW_WIDTH//2, WINDOW_HEIGHT//2+200),
-            button_size=(100, 50), 
-            text_color='white', 
-            fg_color="transparent",
-            border_color='#5b5b5b',
-            border_width=2,  # Set the border width
-            corner_radius=10, 
-            hover=True,
-            command=self.import_sheet_dialogue 
-        )
-        
-        self.clear_cache_button: CTk.CTkButton = create_button(
-            master=self,
-            text="Clear Cache",
-            button_position=(WINDOW_WIDTH//2+150, WINDOW_HEIGHT//2+200),
-            button_size=(100, 50),
-            fg_color="transparent",
-            text_color='white', 
-            border_color='#5b5b5b',
-            border_width=2,  # Set the border width
-            corner_radius=10,
-            hover=True,
-            command=lambda: asyncio_run(self.process_clear_cache_button_press())
-        )
+        # Init main menu widgets
+        pil_img = Image.open("data/img/placeholder_icon.png")
+        scale = 0.75
+        self.main_logo_label = CTk.CTkLabel(master=self,
+                                            text="",
+                                            image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width*scale), 
+                                                                                          int(pil_img.height*scale))),
+                                            width=pil_img.width*scale,
+                                            height=pil_img.height*scale,
+                                            fg_color="transparent",
+                                            bg_color="transparent"
+                                )
 
-        # Technically a label but will behave like a button (using a label do not add code to the create_button function that will be used almost never)
-        self.settings_button: CTk.CTkLabel = create_img(master=self,
-                                                        img_path="data/img/settings_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/settings_dark.png",
-                                                        img_position=(WINDOW_WIDTH-50, 50),
-                                                        anchor="center",
-                                                        scale=0.1) # Load the settings button
+        self.new_sheet_button = CTk.CTkButton(master=self,
+                                              text="New Sheet",
+                                              text_color="white",
+                                              command=self.new_sheet_window,
+                                              fg_color="transparent",
+                                              bg_color="transparent",
+                                              hover_color="#5b5b5b",
+                                              border_color="#5b5b5b",
+                                              border_width=2,
+                                              corner_radius=10,
+                                              hover=True)
+        
+        self.import_sheet_button = CTk.CTkButton(master=self,
+                                                 text="Import Sheet",
+                                                 text_color="white",
+                                                 command=self.import_sheet_dialogue,
+                                                 fg_color="transparent",
+                                                 bg_color="transparent",
+                                                 hover_color="#5b5b5b",
+                                                 border_color="#5b5b5b",
+                                                 border_width=2,
+                                                 corner_radius=10,
+                                                 hover=True)
+
+        self.clear_cache_button = CTk.CTkButton(master=self,
+                                                text="Clear Cache",
+                                                text_color="white",
+                                                command=lambda: asyncio_run(self.process_clear_cache_button_press()),
+                                                fg_color="transparent",
+                                                bg_color="transparent",
+                                                hover_color="#5b5b5b",
+                                                border_color="#5b5b5b",
+                                                border_width=2,
+                                                corner_radius=10,
+                                                hover=True)
+
+        # Technically a label but will behave like a button
+        pil_img = Image.open("data/img/settings_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/settings_dark.png")
+        scale = 0.1
+        self.settings_button = CTk.CTkLabel(master=self,
+                                            text="",
+                                            image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width*scale), 
+                                                                                          int(pil_img.height*scale))),
+                                            width=pil_img.width*scale,
+                                            height=pil_img.height*scale,
+                                            fg_color="transparent",
+                                            bg_color="transparent"
+                                )
+
+        if clear_cache_button_logic() == False: self.clear_cache_button.configure(state="disabled") # Run the clear cache button logic (disable the button if there is no cache)
+
+        # Bind events
         self.settings_button.bind("<Button-1>", lambda _: (self.settings_button.unbind("<Button-1>"), self.show_settings_window(event=_))) # Bind the settings button to the function to show the settings window
 
-        if clear_cache_button_logic() == False: self.clear_cache_button.configure(state='disabled') # Run the clear cache button logic (disable the button if there is no cache)
+        # Pack the widgets
+        self.main_logo_label.place(relx=0.5, rely=0.4, anchor="center") # Place the main logo label
+        self.new_sheet_button.place(relx=0.3, rely=0.8, anchor="center", y=0)
+        self.import_sheet_button.place(relx=0.5, rely=0.8, anchor="center", y=0)
+        self.clear_cache_button.place(relx=0.7, rely=0.8, anchor="center", y=0)
+        self.settings_button.place(relx=1, rely=0, anchor="ne", x=-25, y=25) # Place the settings button with padding
 
     # Main menu submenus
     def new_sheet_window(self) -> None:
@@ -137,28 +154,29 @@ class App(CTk.CTk):
 
         # Create new subwindow
         new_frame = CTk.CTkFrame(master=self, width=frame_width, height=frame_height, corner_radius=25, fg_color="#2b2b2b")
-        new_frame.place(relx=0.5, rely=0.5, anchor="center") # Pack the subwindow
         new_frame.pack_propagate(False)  # Prevent the frame from resizing to fit its children
 
         # Create a button to close the new sheet window
-        close_button = create_img(master=new_frame,
-                                  img_path="data/img/cross_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
-                                  should_be_placed=False,
-                                  scale=0.15) # Load the close button
-        close_button.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
-        close_button.bind("<Button-1>", lambda _: ([child.destroy() for child in new_frame.winfo_children()], new_frame.destroy())) # Bind the close button to a function
-
+        pil_img = Image.open("data/img/cross_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/cross_dark.png")
+        scale = 0.15
+        close_button = CTk.CTkLabel(master=new_frame,
+                                    text="",
+                                    image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width*scale), 
+                                                                                  int(pil_img.height*scale))),
+                                    width=pil_img.width*scale,
+                                    height=pil_img.height*scale,
+                                    fg_color="transparent",
+                                    bg_color="transparent"
+                                    )   
+        
         # Create a label and entry for text input
         sheet_name_label = CTk.CTkLabel(new_frame, text="Enter name of combo sheet:", width=frame_width*0.5, height=30)
         sheet_name_entry = CTk.CTkEntry(new_frame, width=frame_width*0.5, height=50, font=("Helvetica", 16), justify="center")
-        sheet_name_label.pack(pady=(10,0)) # Pack the label with padding
-        sheet_name_entry.pack(pady=(10, 0)) # Pack the entry with padding (10 padding on top, 0 padding on bottom)
-
+        
         # Create switches
         import_ydk = CTk.CTkSwitch(new_frame, 
                                    text="Import cards from YDK file",
                                    progress_color="#565656")
-        import_ydk.pack(pady=20) # Pack the switch with padding
 
         # Create color picker
         color_picker = CTkColorPicker(new_frame, 
@@ -166,8 +184,7 @@ class App(CTk.CTk):
                                       button_color="#565656",
                                       button_hover_color="#000000",
                                       rgb_entries=True)
-        color_picker.place(x=frame_width - 25, y=frame_height-250, anchor="e")
-
+        
         # Create entry for canvas color
         canvas_color_frame = CTk.CTkFrame(new_frame)
         canvas_color_label = CTk.CTkLabel(canvas_color_frame, 
@@ -179,22 +196,19 @@ class App(CTk.CTk):
                                           textvariable=StringVar(value=config.DEFAULT_COLORS["CANVAS"]), 
                                           justify="center",
                                           corner_radius=10)
-        canvas_entry_button = create_button(master=canvas_color_frame, 
+        canvas_entry_button = CTk.CTkButton(master=canvas_color_frame,
                                             text="Get from picker", 
-                                            button_size=(100, 25), 
+                                            width=100,
+                                            height=25,
                                             command=lambda: canvas_color_entry.configure(textvariable=StringVar(value=color_picker.get().upper())), 
-                                            text_color='white', 
+                                            text_color="white", 
                                             fg_color="transparent",
-                                            border_color='#565656',
+                                            hover_color="#5b5b5b",
+                                            border_color="#5b5b5b",
+                                            border_width=2,
                                             corner_radius=10, 
-                                            should_be_placed=False,
                                             hover=True)
         
-        canvas_color_frame.place(relx=0, rely=0.5, anchor="w", x=100, y=-25)
-        canvas_color_label.pack(side="left")
-        canvas_color_entry.pack(side="left", padx=(5, 10))
-        canvas_entry_button.pack(side="left") # Pack the button
-
         # Create entry for arrow color
         arrow_color_frame = CTk.CTkFrame(master=new_frame)
         arrow_color_label = CTk.CTkLabel(master=arrow_color_frame, 
@@ -206,44 +220,76 @@ class App(CTk.CTk):
                                          textvariable=StringVar(value=config.DEFAULT_COLORS["ARROW"]), 
                                          justify="center",
                                          corner_radius=10)
-        arrow_color_entry_button = create_button(master=arrow_color_frame, 
+        arrow_color_entry_button = CTk.CTkButton(master=arrow_color_frame,
                                                  text="Get from picker", 
-                                                 button_size=(100, 25), 
+                                                 width=100,
+                                                 height=25,
                                                  command=lambda: arrow_color_entry.configure(textvariable=StringVar(value=color_picker.get().upper())), 
-                                                 text_color='white', 
+                                                 text_color="white", 
                                                  fg_color="transparent",
-                                                 border_color='#565656',
+                                                 hover_color="#5b5b5b",
+                                                 border_color="#565656",
+                                                 border_width=2,
                                                  corner_radius=10, 
-                                                 should_be_placed=False,
                                                  hover=True)
+
+        # Create button to swap the colors
+        pil_img = Image.open("data/img/swap_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/swap_dark.png")
+        scale = 0.1
+        swap_colors_button = CTk.CTkLabel(master=new_frame,
+                                          text="",
+                                          image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width*scale), 
+                                                                                            int(pil_img.height*scale))),
+                                          width=pil_img.width*scale,
+                                          height=pil_img.height*scale,
+                                          fg_color="transparent",
+                                          bg_color="transparent"
+                                          )
+        
+        # Create a button to submit the input
+        submit_button = CTk.CTkButton(master=new_frame,
+                                      text="Submit", 
+                                      command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get(), new_frame=new_frame), 
+                                      text_color="white", 
+                                      fg_color="transparent",
+                                      hover_color="#5b5b5b",
+                                      hover=True, 
+                                      border_color="#565656",
+                                      border_width=2,
+                                      corner_radius=25)
+
+        # Bind events
+        close_button.bind("<Button-1>", lambda _: ([child.destroy() for child in new_frame.winfo_children()], new_frame.destroy())) # Bind the close button to a function
+
+        def swap_colors(event=None) -> None: # Function to swap the colors (event has to be included even if it is not used because of the bind function)
+            arrow_color = arrow_color_entry.get()
+            arrow_color_entry.configure(textvariable=StringVar(value=canvas_color_entry.get()))
+            canvas_color_entry.configure(textvariable=StringVar(value=arrow_color))
+        swap_colors_button.bind("<Button-1>", swap_colors)
+
+        # Pack the widgets
+        new_frame.place(relx=0.5, rely=0.5, anchor="center") # Pack the subwindow
+
+        close_button.place(relx=1.0, rely=0.0, anchor="ne", x=-10, y=10)
+
+        sheet_name_label.pack(pady=(10,0)) # Pack the label with padding
+        sheet_name_entry.pack(pady=(10, 0)) # Pack the entry with padding (10 padding on top, 0 padding on bottom)
+
+        import_ydk.pack(pady=20) # Pack the switch with padding
+
+        color_picker.place(x=frame_width - 25, y=frame_height-250, anchor="e")
+
+        canvas_color_frame.place(relx=0, rely=0.5, anchor="w", x=100, y=-25)
+        canvas_color_label.pack(side="left")
+        canvas_color_entry.pack(side="left", padx=(5, 10))
+        canvas_entry_button.pack(side="left") # Pack the button
+
         arrow_color_frame.place(relx=0, rely=0.5, anchor="w", x=100, y=25)
         arrow_color_label.pack(side="left")
         arrow_color_entry.pack(side="left", padx=(5, 10))
         arrow_color_entry_button.pack(side="left") # Pack the button
 
-        # Create button to swap the colors
-        swap_colors_button = create_img(master=new_frame,
-                                        img_path="data/img/swap_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/swap_dark.png",
-                                        should_be_placed=False,
-                                        scale=0.1)
         swap_colors_button.place(relx=0, rely=0.5, anchor="w", x=25, y=0)
-        def swap_colors():
-            arrow_color = arrow_color_entry.get()
-            arrow_color_entry.configure(textvariable=StringVar(value=canvas_color_entry.get()))
-            canvas_color_entry.configure(textvariable=StringVar(value=arrow_color))
-        swap_colors_button.bind("<Button-1>", swap_colors)    
-
-        # Create a button to submit the input
-        submit_button = create_button(master=new_frame, 
-                                      text="Submit", 
-                                      button_size=(100, 50), 
-                                      command=lambda: self.process_new_sheet_input(sheet_name=sheet_name_entry.get(), import_ydk=import_ydk.get(), canvas_color=canvas_color_entry.get(), arrow_color=arrow_color_entry.get(), new_frame=new_frame), 
-                                      text_color='white', 
-                                      fg_color="transparent",
-                                      hover=True, 
-                                      border_color='#565656',
-                                      should_be_placed=False,
-                                      corner_radius=25)
         submit_button.place(relx=0.5, rely=1.0, anchor="center", y=-15 - submit_button.winfo_reqheight()) # Place the submit button
 
     def process_new_sheet_input(self, sheet_name: str, import_ydk: str, canvas_color: str, arrow_color: str, new_frame) -> None:
@@ -270,38 +316,9 @@ class App(CTk.CTk):
 
         # Handle ydk import if user selected to import ydk
         if import_ydk: # If the ydk import switch is on
-            ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
-            self.ydk_parser.read_ydk(ydk_path) # Read the ydk file, cache the data and create and store the card objects into the card_objects list
-
-            # Figure out if the images should be cropped or not
-            if config.USE_CROPPED_IMAGES: image_type: str = "cropped_small"
-            else: image_type: str = "small"
-
-            # Place main deck images
-            for i, card in enumerate(self.card_objects["main"]): # For each card in the main deck
-                card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
-                card.images[image_type].bind("<Button-1>", lambda _, card=card: self.sheet_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
-
-            # Place extra deck images
-            if len(self.card_objects["extra"]) > 0: # If there are cards in the extra deck
-                image_last_row: int = (len(self.card_objects["main"]) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck images
-                self.sheet_handler.cards_tab_extradeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
-                start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the extra deck images
-                for i, card in enumerate(self.card_objects["extra"], start=start_index): # For each card in the extra deck
-                    card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
-                    card.images[image_type].bind("<Button-1>", lambda _, card=card: self.sheet_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
-
-            # Place side deck images
-            if len(self.card_objects["side"]) > 0: # If there are cards in the side deck
-                image_last_row: int = ((len(self.card_objects["main"]) + len(self.card_objects["extra"])) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck and extra deck images plus one for the extra deck label
-                self.sheet_handler.cards_tab_sidedeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
-                start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the side deck images
-                for i, card in enumerate(self.card_objects["side"], start=start_index): # For each card in the side deck
-                    card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5)
-                    card.images[image_type].bind("<Button-1>", lambda _, card=card: self.sheet_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
-
+            self.sheet_handler.import_ydk() # Import the ydk file
         else:
-            self.sheet_handler.cards_empty_label.pack() # Show the empty label if the user did not import ydk
+            self.sheet_handler.cards_empty_label.pack(pady=15, padx=15) # Show the empty label if the user did not import ydk
 
         # Destroy the widgets in the new sheet window
         [child.destroy() for child in new_frame.winfo_children()] # Destroy all the widgets in the window
@@ -346,18 +363,22 @@ class App(CTk.CTk):
 
         frame_width, frame_height = WINDOW_WIDTH*0.8, WINDOW_HEIGHT*0.8
 
-        # Create new subwindow
+        # Init widgets
         settings_frame = CTk.CTkFrame(master=self, width=frame_width, height=frame_height, fg_color="#2b2b2b", corner_radius=25)
-        settings_frame.place(relx=0.5, rely=0.5, anchor="center")
         settings_frame.pack_propagate(False) # Prevent the frame from resizing to minimum size to fit its children
 
         # Close button
-        close_button: CTk.CTkLabel = create_img(master=settings_frame,
-                                                img_path="data/img/cross_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/cross_dark.png",
-                                                should_be_placed=False,
-                                                scale=0.15) # Load the close button
-        close_button.place(relx=1.0, rely=0, anchor="ne", x=-10, y=10)
-        close_button.bind("<Button-1>", lambda _: (settings_frame.destroy(), self.settings_button.bind("<Button-1>", lambda _: (self.settings_button.unbind("<Button-1>"), self.show_settings_window(event=_))))) # Bind the close button to a function
+        pil_img = Image.open("data/img/settings_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/settings_dark.png")
+        scale = 0.15
+        close_button = CTk.CTkLabel(master=settings_frame,
+                                    text="",
+                                    image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width*scale), 
+                                                                                  int(pil_img.height*scale))),
+                                    width=pil_img.width*scale,
+                                    height=pil_img.height*scale,
+                                    fg_color="transparent",
+                                    bg_color="transparent"
+                                    )
 
         # Appearance mode switch
         appearance_mode_switch = CTk.CTkSwitch(settings_frame, 
@@ -369,7 +390,6 @@ class App(CTk.CTk):
         # Set the switch to the current appearance mode
         if config.APPEARENCE_MODE == "dark": appearance_mode_switch.select() 
         else: appearance_mode_switch.deselect()
-        appearance_mode_switch.place(relx=0.5, rely=0.5, anchor="center", y=-25) # Place the switch
 
         # Use cropped images switch
         use_cropped_images_switch = CTk.CTkSwitch(settings_frame,
@@ -380,44 +400,72 @@ class App(CTk.CTk):
                                                   command=lambda: set_config_variable(variable_name="USE_CROPPED_IMAGES", value=True if use_cropped_images_switch.get() == "yes" else False)) # Create the use cropped images switch
         if config.USE_CROPPED_IMAGES: use_cropped_images_switch.select()
         else: use_cropped_images_switch.deselect()
-        use_cropped_images_switch.place(relx=0.5, rely=0.5, anchor="center", y=25)
 
         # Report bug button
-        report_bug_button = create_button(master=settings_frame,
+        report_bug_button = CTk.CTkButton(master=settings_frame,
                                           text="Report a bug",
-                                          button_size=(100, 50),
                                           command= lambda: self.show_report_modality_window(), 
-                                          text_color='white', 
+                                          text_color="white", 
                                           fg_color="transparent",
-                                          border_color='#4a4d50',
+                                          border_color="#4a4d50",
+                                          border_width=2,
                                           corner_radius=10,
-                                          should_be_placed=False,
+                                          hover_color="#4a4d50",
                                           hover=True)
-        report_bug_button.place(relx=0.5, rely=0.6, anchor="center", y=25)
-
+        
         # Github link button
-        github_link_button = create_img(master=settings_frame,
-                img_path="data/img/github_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/github_dark.png",
-                should_be_placed=False,
-                scale=0.1) # Load the github link button
-        github_link_button.place(relx=0.4, rely=0.9, anchor="center")
-        github_link_button.bind("<Button-1>", lambda _: os.system(f"start {config.REPO_URL}")) # Bind the github link button to a function
-
+        pil_img = Image.open("data/img/github_light.png" if config.APPEARENCE_MODE == "dark" else "data/img/github_dark.png")
+        scale = 0.1
+        github_link_button = CTk.CTkLabel(master=settings_frame,
+                                          text="",
+                                          image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width*scale), 
+                                                                                            int(pil_img.height*scale))),
+                                          width=pil_img.width*scale,
+                                          height=pil_img.height*scale,
+                                          fg_color="transparent",
+                                          bg_color="transparent"
+                                         )
+        
         # Master Duel Meta link button
-        master_duel_meta_link_button = create_img(master=settings_frame,
-                                       img_path="data/img/master_duel_meta.png",
-                                       should_be_placed=False,
-                                       scale=1.0)
-        master_duel_meta_link_button.place(relx=0.5, rely=0.9, anchor="center")
-        master_duel_meta_link_button.bind("<Button-1>", lambda _: os.system("start https://www.masterduelmeta.com/"))
-
+        pil_img = Image.open("data/img/master_duel_meta.png")
+        master_duel_meta_link_button = CTk.CTkLabel(master=settings_frame,
+                                                    text="",
+                                                    image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width), 
+                                                                                                    int(pil_img.height))),
+                                                    width=pil_img.width,
+                                                    height=pil_img.height,
+                                                    fg_color="transparent",
+                                                    bg_color="transparent"
+                                                    )
+        
         # YGOProDeck link button
-        ygoprodeck_link_button = create_img(master=settings_frame,
-                    img_path="data/img/ygoprodeck.png",
-                    should_be_placed=False,
-                    scale=0.25)
-        ygoprodeck_link_button.place(relx=0.6, rely=0.9, anchor="center")
+        pil_img = Image.open("data/img/ygoprodeck.png")
+        scale = 0.25
+        ygoprodeck_link_button = CTk.CTkLabel(master=settings_frame,
+                                              text="",
+                                              image=CTk.CTkImage(light_image=pil_img, size=(int(pil_img.width*scale), 
+                                                                                                int(pil_img.height*scale))),
+                                              width=pil_img.width*scale,
+                                              height=pil_img.height*scale,
+                                              fg_color="transparent",
+                                              bg_color="transparent"
+                                             )
+        
+        # Bind the events
+        close_button.bind("<Button-1>", lambda _: (settings_frame.destroy(), self.settings_button.bind("<Button-1>", lambda _: (self.settings_button.unbind("<Button-1>"), self.show_settings_window(event=_))))) # Bind the close button to a function
+        github_link_button.bind("<Button-1>", lambda _: os.system(f"start {config.REPO_URL}")) # Bind the github link button to a function
+        master_duel_meta_link_button.bind("<Button-1>", lambda _: os.system("start https://www.masterduelmeta.com/"))
         ygoprodeck_link_button.bind("<Button-1>", lambda _: os.system("start https://ygoprodeck.com/"))
+
+        # Pack the widgets
+        settings_frame.place(relx=0.5, rely=0.5, anchor="center")
+        close_button.place(relx=1.0, rely=0, anchor="ne", x=-10, y=10)
+        appearance_mode_switch.place(relx=0.5, rely=0.5, anchor="center", y=-25) # Place the switch
+        use_cropped_images_switch.place(relx=0.5, rely=0.5, anchor="center", y=25)
+        report_bug_button.place(relx=0.5, rely=0.6, anchor="center", y=25)
+        github_link_button.place(relx=0.4, rely=0.9, anchor="center")
+        master_duel_meta_link_button.place(relx=0.5, rely=0.9, anchor="center")
+        ygoprodeck_link_button.place(relx=0.6, rely=0.9, anchor="center")
 
     def show_report_modality_window(self):
         """
@@ -673,7 +721,6 @@ class App(CTk.CTk):
                                                mode=mode)
 
     # Helper functions
-
     async def process_clear_cache_button_press(self) -> None:
         """
         Clears all the cache and then disables the clear cache button.
@@ -687,10 +734,11 @@ class App(CTk.CTk):
         """
 
         await self.ydk_parser.clear_cache() # Clear the cache
-        self.clear_cache_button.configure(state='disabled') # Disable the clear cache button
+        self.clear_cache_button.configure(state="disabled") # Disable the clear cache button
 
 if __name__ == "__main__":
     app = App()
     app.ydk_parser.set_app_reference(app) # Set the app reference in the ydk parser
+    app.ydk_parser.set_sheet_handler_reference(app.sheet_handler) # Set the sheet handler reference in the ydk parser
     app.sheet_handler.set_app_reference(app) # Set the app reference in the sheet handler
     app.mainloop()

@@ -16,6 +16,7 @@ class YDKParser:
         self.api_handler = api_handler
         self.log_handler = log_handler
         self.app = None
+        self.sheet_handler = None
 
         self.semaphore = asyncio.Semaphore(20) # create a semaphore to limit the number of concurrent requests to 20
         self.lock = asyncio.Lock() # create a lock to ensure thread safety when writing to the self.card_img_paths_list
@@ -28,7 +29,6 @@ class YDKParser:
         # also used to optimize sheet_handler.cards_tab_import_ydk_button function \
         # (instead of unpacking all the card images and then replacing all of them after reading the ydk file \
         # the code can just identify the newly imported cards and pack them in cards_list_frame scrollable frame)
-
 
     def read_ydk(self, ydk_file):
         """
@@ -84,13 +84,15 @@ class YDKParser:
                         Card(id=line,
                              name=card_data["data"][0]["name"],
                              type=type,
+                             linkval=card_data["data"][0]["linkval"] if type == "Link Monster" else None,
                              level=card_data["data"][0]["level"] if type not in ["Spell Card", "Trap Card"] else None,
                              atk=card_data["data"][0]["atk"] if type not in ["Spell Card", "Trap Card"] else None,
                              def_=card_data["data"][0]["def"] if type not in ["Spell Card", "Trap Card"] else None,
                              race=card_data["data"][0]["race"],
                              attribute=card_data["data"][0]["attribute"] if type not in ["Spell Card", "Trap Card"] else None,
                              effect=card_data["data"][0]["desc"] if "desc" in card_data["data"][0] else None,
-                             deck_type=position)
+                             deck_type=position,
+                             img_root_window=self.sheet_handler.cards_list_frame)
                     )
 
                 if has_api_been_called: time.sleep(0.05) # sleep for 50 milliseconds to limit to 20 requests per second (API limit)
@@ -101,11 +103,6 @@ class YDKParser:
 
         # Log that the ydk file has been read
         asyncio.run(self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}."))
-
-        # Create the card images (not possible in the loop that reads the file because the images need to be cached first)
-        for deck_type in self.app.card_objects:
-            for card in self.app.card_objects[deck_type]:
-                card.create_images(img_root_window=self.app.sheet_handler.cards_list_frame)
 
         # Delete the card data and card image URLs lists to free up memory
         self.card_data_output = []
@@ -223,7 +220,7 @@ class YDKParser:
 
         # Delete images
         BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
-        for img_type in ["cards", "cards_small", "cards_cropped", "cards_cropped_small"]:
+        for img_type in ["cards", "cards_small", "cards_cropped"]:
             img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type)
             for img in os.listdir(img_path):
                 final_path = os.path.join(img_path, img)
@@ -252,3 +249,17 @@ class YDKParser:
         """
 
         self.app = app
+    
+    def set_sheet_handler_reference(self, sheet_handler):
+        """
+        Sets the reference to the sheet handler.
+
+        params:
+            sheet_handler: SheetHandler The reference to the sheet handler.
+        raises:
+            None
+        returns:
+            None
+        """
+
+        self.sheet_handler = sheet_handler

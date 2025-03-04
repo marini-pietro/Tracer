@@ -2,7 +2,7 @@ try:
     import requests
 except ImportError:
     import os
-    os.system("pip install -r requirements.txt")("pip install requests")
+    os.system("pip install -r requirements.txt")
     del os
     import requests
 
@@ -26,21 +26,18 @@ class APIHandler:
         """
 
         # Check if all search targets are valid
-        are_search_targets_valid: bool = all([search_target in ["name", "id", "level", "race", "attribute", "type"] for search_target in search_data.keys()])
-        
-        if not are_search_targets_valid: raise ValueError("Invalid search target. Please use 'name', 'id', 'level', 'race', 'attribute' or 'type'.")
+        are_search_targets_valid: bool = all([search_target in ["name", "fname", "id", "level", "race", "attribute", "type", "linkmarker"] for search_target in search_data.keys()])
+        if not are_search_targets_valid: raise ValueError("Invalid search target. Please use 'name', 'id', 'level', 'race', 'attribute', 'type' or 'linkmarker'.")
 
         final_url: str = BASE_URL # Initialize the final URL
 
         # Add the search values and search targets to the URL
         for search_target, search_value in search_data.items():
             final_url += f"{search_target}={search_value}&"
-
-        final_url = final_url[:-1] # Remove the last '&' from the URL
   
-        response = requests.get(final_url) # Send the request to the API
+        response = requests.get(final_url[:-1]) # Send the request to the API (remove the last '&' from the URL)
     
-        if response.status_code != 200:
+        if not response.ok:
             self.log_handler.log(type="ERROR", message=f"Could not connect to the API at {final_url} with error code {response.status_code}.")
 
         return response.json()
