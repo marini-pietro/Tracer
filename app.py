@@ -22,7 +22,7 @@ from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
 from apihandler import APIHandler
 from ydkparser import YDKParser
 from loghandler import LogHandler
-from canvashandler import CanvasHandler
+from sheethandler import SheetHandler
 from emailhandler import EmailHandler
 from card import Card
 from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
@@ -47,7 +47,7 @@ class App(CTk.CTk):
         self.log_handler = LogHandler()
         self.api_handler = APIHandler(log_handler=self.log_handler)
         self.ydk_parser = YDKParser(api_handler=self.api_handler, log_handler=self.log_handler)
-        self.canvas_handler = CanvasHandler(log_handler=self.log_handler, ydk_parser=self.ydk_parser, api_handler=self.api_handler)
+        self.sheet_handler = SheetHandler(log_handler=self.log_handler, ydk_parser=self.ydk_parser, api_handler=self.api_handler)
         self.email_handler = EmailHandler(log_handler=self.log_handler)
         self.card_objects: dict[list[Card], list[Card], list[Card]] = {"main": [ ],
                                                                        "extra": [ ], 
@@ -261,24 +261,47 @@ class App(CTk.CTk):
 
         # Setter functions for the canvas handler
 
-        self.canvas_handler.set_root_window(root_window=self) # Set the root window of the canvas handler
+        self.sheet_handler.set_root_window(root_window=self) # Set the root window of the canvas handler
 
-        if sheet_name != "": self.canvas_handler.sheet_name = sheet_name # If the user entered a sheet name, set the sheet name
+        if sheet_name != "": self.sheet_handler.sheet_name = sheet_name # If the user entered a sheet name, set the sheet name
 
-        self.canvas_handler.set_canvas_color(color=canvas_color) # Set the canvas color
-        self.canvas_handler.set_arrow_color(color=arrow_color)
+        self.sheet_handler.set_canvas_color(color=canvas_color) # Set the canvas color
+        self.sheet_handler.set_arrow_color(color=arrow_color)
 
         # Handle ydk import if user selected to import ydk
         if import_ydk: # If the ydk import switch is on
             ydk_path = filedialog.askopenfilename(title="Select YDK file", filetypes=[("YDK files", "*.ydk")]) # Open the file dialog to select a ydk file     
             self.ydk_parser.read_ydk(ydk_path) # Read the ydk file, cache the data and create and store the card objects into the card_objects list
 
-            if config.USE_CROPPED_IMAGES:
-                for i, card in enumerate(self.card_objects["main"]): # For each card in the main deck
-                    card.images["cropped_small"].grid(row=i // 3, column=i % 3, padx=5, pady=5) # Pack the cropped small images in a grid with 3 per row
-                    card.images["cropped_small"].bind("<Button-1>", lambda _, card=card: self.canvas_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
+            # Figure out if the images should be cropped or not
+            if config.USE_CROPPED_IMAGES: image_type: str = "cropped_small"
+            else: image_type: str = "small"
+
+            # Place main deck images
+            for i, card in enumerate(self.card_objects["main"]): # For each card in the main deck
+                card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
+                card.images[image_type].bind("<Button-1>", lambda _, card=card: self.sheet_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
+
+            # Place extra deck images
+            if len(self.card_objects["extra"]) > 0: # If there are cards in the extra deck
+                image_last_row: int = (len(self.card_objects["main"]) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck images
+                self.sheet_handler.cards_tab_extradeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
+                start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the extra deck images
+                for i, card in enumerate(self.card_objects["extra"], start=start_index): # For each card in the extra deck
+                    card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
+                    card.images[image_type].bind("<Button-1>", lambda _, card=card: self.sheet_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
+
+            # Place side deck images
+            if len(self.card_objects["side"]) > 0: # If there are cards in the side deck
+                image_last_row: int = ((len(self.card_objects["main"]) + len(self.card_objects["extra"])) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck and extra deck images plus one for the extra deck label
+                self.sheet_handler.cards_tab_sidedeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
+                start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the side deck images
+                for i, card in enumerate(self.card_objects["side"], start=start_index): # For each card in the side deck
+                    card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5)
+                    card.images[image_type].bind("<Button-1>", lambda _, card=card: self.sheet_handler.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
+
         else:
-            self.canvas_handler.cards_empty_label.pack() # Show the empty label if the user did not import ydk
+            self.sheet_handler.cards_empty_label.pack() # Show the empty label if the user did not import ydk
 
         # Destroy the widgets in the new sheet window
         [child.destroy() for child in new_frame.winfo_children()] # Destroy all the widgets in the window
@@ -291,7 +314,7 @@ class App(CTk.CTk):
         self.clear_cache_button.destroy()
 
         # Show the canvas window
-        asyncio_run(self.canvas_handler.show()) # Show the canvas window 
+        asyncio_run(self.sheet_handler.show()) # Show the canvas window 
 
     def import_sheet_dialogue(self) -> None:
         """
@@ -649,8 +672,6 @@ class App(CTk.CTk):
                                                message_box_root_window=self, 
                                                mode=mode)
 
-
-
     # Helper functions
 
     async def process_clear_cache_button_press(self) -> None:
@@ -671,4 +692,5 @@ class App(CTk.CTk):
 if __name__ == "__main__":
     app = App()
     app.ydk_parser.set_app_reference(app) # Set the app reference in the ydk parser
+    app.sheet_handler.set_app_reference(app) # Set the app reference in the sheet handler
     app.mainloop()

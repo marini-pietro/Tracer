@@ -11,7 +11,7 @@ except ImportError:
 
 class Card():
     def __init__(self,
-                 card_id: str | int,
+                 id: str | int,
                  name: str,
                  effect: str, 
                  level: int,
@@ -23,11 +23,11 @@ class Card():
                  type: str):
 
         # Check if arguments are valid and do the necessary conversions
-        if not isinstance(card_id, str): 
-            if not isinstance(card_id, int):
-                card_id = str(card_id)
+        if not isinstance(id, str): 
+            if not isinstance(id, int):
+                id = str(id)
             else:
-                raise TypeError(f"Expected str or int, got {type(card_id)}")
+                raise TypeError(f"Expected str or int, got {type(id)}")
         if not isinstance(level, int) and level is not None:
             raise TypeError(f"Expected int, got {type(level)}")
         if not isinstance(atk, int) and atk is not None:
@@ -38,7 +38,7 @@ class Card():
             raise TypeError(f"Expected str, got {type(effect)}")
 
         # Set the attributes
-        self.card_id = card_id
+        self.id = id
         self.deck_type = deck_type
         self.type = type
         self.name = name # The name of the card
@@ -59,10 +59,10 @@ class Card():
 
         # Handle images paths and objects
         self.images_paths: dict[str, str] = {
-            "normal": os_path.join("data", "img", "cached_images", "cards", f"{card_id}.jpg"),
-            "small": os_path.join("data", "img", "cached_images", "cards_small", f"{card_id}.jpg"),
-            "cropped": os_path.join("data", "img", "cached_images", "cards_cropped", f"{card_id}.jpg"),
-            "cropped_small": os_path.join("data", "img", "cached_images", "cards_cropped_small", f"{card_id}.jpg")
+            "normal": os_path.join("data", "img", "cached_images", "cards", f"{id}.jpg"),
+            "small": os_path.join("data", "img", "cached_images", "cards_small", f"{id}.jpg"),
+            "cropped": os_path.join("data", "img", "cached_images", "cards_cropped", f"{id}.jpg"),
+            "cropped_small": os_path.join("data", "img", "cached_images", "cards_cropped_small", f"{id}.jpg")
         }
 
         self.pillow_images: dict[str, Image.Image] = {}
@@ -92,7 +92,7 @@ class Card():
         }
 
         if not os_path.exists(self.images_paths["cropped_small"]): # If the image is not cached create it
-            self.pillow_images["cropped_small"].save(os_path.join("data", "img", "cached_images", "cards_cropped_small", f"{self.card_id}.jpg")) # Cache the image
+            self.pillow_images["cropped_small"].save(os_path.join("data", "img", "cached_images", "cards_cropped_small", f"{self.id}.jpg")) # Cache the image
 
         self.images: dict[str, CTkLabel] = {
             "normal": CTkLabel(master=img_root_window,
@@ -131,7 +131,7 @@ class Card():
             IOError: If the json file is not found.
         """
 
-        json_file_path = os_path.join("data", "card_data", "{card_id}.json").format(card_id=self.card_id)
+        json_file_path = os_path.join("data", "card_data", "{id}.json").format(id=self.id)
         if not os_path.exists(json_file_path):
             raise IOError(f"File not found: {json_file_path}")
         with open(json_file_path, 'r') as file:

@@ -23,6 +23,13 @@ class YDKParser:
         self.card_data_output: list[dict] = [] # This list will contain all the card data dictionaries
         self.card_imgs_urls: list[list[str, str, str]] = [] # This list will contain all the card image URLs that need to be cached (passed to the cache_img function in thread)
 
+        self.card_ids_already_processed: list[int] = [] # list of card ids that have already been processed
+        # (useful to minimize the number of necessary operations while discarting possible duplicates)
+        # also used to optimize sheet_handler.cards_tab_import_ydk_button function \
+        # (instead of unpacking all the card images and then replacing all of them after reading the ydk file \
+        # the code can just identify the newly imported cards and pack them in cards_list_frame scrollable frame)
+
+
     def read_ydk(self, ydk_file):
         """
         Reads a ydk file and returns the card ids and card data.
@@ -31,13 +38,11 @@ class YDKParser:
             ydk_file: str The path to the ydk file.
 
         returns:
-            tuple[list[list[int], list[int], list[int]], list[list[dict], list[dict], list[dict]], list[list[str, str, str]]]: 
-            The card ids, card data, and card image paths. The first list contains the card ids, the second list contains the card data, 
-            and the third list contains the card image paths. The first list contains the main deck, the second list contains the extra deck, 
-            the third list contains the side deck.
-        """        
+            None
 
-        ids_already_processed = [] # list of card ids that have already been processed (useful to minimize the number of necessary operations while discarting possible duplicates)
+        raises:
+            None
+        """        
 
         with open(ydk_file, "r") as file:
             for line in file:
@@ -73,10 +78,10 @@ class YDKParser:
                 type: str = card_data["data"][0]["type"] # get the card type from the card data
 
                 # Check if the card is not already in the list of card objects
-                if not line in ids_already_processed:
-                    ids_already_processed.append(line) # add the card id to the list of card ids that have already been processed
+                if not line in self.card_ids_already_processed:
+                    self.card_ids_already_processed.append(line) # add the card id to the list of card ids that have already been processed
                     self.app.card_objects[position].append( # add the card object to the list of card objects
-                        Card(card_id=line,
+                        Card(id=line,
                              name=card_data["data"][0]["name"],
                              type=type,
                              level=card_data["data"][0]["level"] if type not in ["Spell Card", "Trap Card"] else None,
@@ -100,12 +105,11 @@ class YDKParser:
         # Create the card images (not possible in the loop that reads the file because the images need to be cached first)
         for deck_type in self.app.card_objects:
             for card in self.app.card_objects[deck_type]:
-                card.create_images(img_root_window=self.app.canvas_handler.cards_list_frame)
+                card.create_images(img_root_window=self.app.sheet_handler.cards_list_frame)
 
         # Delete the card data and card image URLs lists to free up memory
         self.card_data_output = []
         self.card_imgs_urls = []
-        del ids_already_processed
 
     def write_ydk(self, ydk_file_name): # TODO implement ydk writing
         """
@@ -121,18 +125,7 @@ class YDKParser:
             None
         """
 
-        ydk_file_path: str = filedialog.asksaveasfilename(defaultextension=".ydk", filetypes=[("YDK files", "*.ydk")], initialfile=ydk_file_name) # open a file dialog to save the ydk file
-
-        with open(ydk_file_path, "w") as f:
-            for i, card_ids in enumerate(self.card_ids_output):
-                if i == 0: f.write("#main\n")
-                elif i == 1: f.write("#extra\n")
-                elif i == 2: f.write("!side\n")
-
-                for card_id in card_ids:
-                    f.write(card_id + "\n")
-
-        asyncio.run(self.log_handler.log(type="INFO", message=f"Wrote ydk file {ydk_file_name}."))
+        raise NotImplementedError("YDK writing is not implemented yet.")
 
     async def cache_data(self):
         """
