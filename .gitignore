@@ -11,18 +11,11 @@ log.txt
 client_secret_955126219072-1sqqr5se4taf4p3ago6jhj6p3ipo4jki.apps.googleusercontent.com.json
 
 # Cached data
-data/img/cached_images/cards/*.jpg
-data/img/cached_images/cards_small/*.jpg
-data/img/cached_images/cards_cropped/*.jpg
-data/img/cached_images/cards_cropped_small/*.jpg
+data/img/cache/cards/*.jpg
+data/img/cache/cards_small/*.jpg
+data/img/cache/cards_cropped/*.jpg
+data/img/cache/cards_cropped_small/*.jpg
 data/card_data/*.json
-
-# Keep the folders but not the contents
-!data/img/cached_images/cards/
-!data/img/cached_images/cards_small/
-!data/img/cached_images/cards_cropped/
-!data/img/cached_images/cards_cropped_small/
-!data/card_data/
 
 # C extensions
 *.so

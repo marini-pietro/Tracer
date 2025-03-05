@@ -1,7 +1,7 @@
 try:
     import os
     import customtkinter as CTk
-    from CTkMessagebox import CTkMessagebox
+    from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
     import tkinter as tk
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
@@ -10,13 +10,12 @@ except ImportError:
     import os
     os.system("pip install -r requirements.txt")
     import customtkinter as CTk
-    from CTkMessagebox import CTkMessagebox
+    from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
     import tkinter as tk
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
 
 import config
-from utils import create_button
 from datetime import datetime
 
 class SheetHandler: #TODO add possibility to discard current canvas and return to main menu
@@ -24,7 +23,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                  log_handler,
                  api_handler,
                  ydk_parser, 
-                 root_window = None, 
+                 root_window, 
                  sheet_name: str = None, 
                  canvas_color: str = config.DEFAULT_COLORS["ARROW"], 
                  arrow_color: str = config.DEFAULT_COLORS["CANVAS"]):
@@ -33,12 +32,19 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         if sheet_name is not None: self.sheet_name = sheet_name # Set the sheet name to the provided value
         self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y-%m-%d')}" # Set the sheet name to the current date if no name is provided TODO implement logic to update the name with a number if a sheet with the same name already exists
 
-        # Create tabview widget and its tabs
-        self.tabs = CTk.CTkTabview(self.root_window)
+        # Init widgets
+        self.menu_bar = None # This widget has to be created in the show method to avoid it showing up in the main menu
+
+        # | Create tabview widget and its tabs
+        self.tabs = CTk.CTkTabview(master=self.root_window,
+                                   bg_color="#242424",
+                                   segmented_button_selected_color="#242424",
+                                   segmented_button_selected_hover_color="#2b2b2b",
+                                   segmented_button_unselected_hover_color="#2b2b2b",
+                                   )
         canvas_tab = self.tabs.add("Canvas")
         cards_tab = self.tabs.add("Cards")
         card_search_tab = self.tabs.add("Card search")
-        help_tab = self.tabs.add("Help")
 
         # Initialize variables
         self.scale: float = 1.0 # The scale of the canvas
@@ -50,7 +56,8 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
 
         # CANVAS TAB
         # | Init widgets
-        self.canvas: CTk.CTkCanvas = CTk.CTkCanvas(master = canvas_tab, bg = canvas_color)
+        self.canvas: CTk.CTkCanvas = CTk.CTkCanvas(master=canvas_tab, 
+                                                   bg=canvas_color)
 
         # TODO aggiungi intestazione a canvas con bottoni file, edit, ecc.. che poi aprono un menu a tendina con le varie opzioni
         
@@ -68,6 +75,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         self.canvas.bind("<MouseWheel>", self.on_mouse_wheel)
 
         # | Place the widgets
+        self.canvas.pack(fill=tk.BOTH, expand=True) 
 
         # CARDS TAB
         # | Init widgets
@@ -101,12 +109,12 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                                                      text="Side deck", 
                                                      font=("Helvetica", 16))
         
-        self.cards_tab_import_button = create_button(master=self.cards_details_frame,
-                                                     command=self.import_ydk,
-                                                     text="Import from YDK",
-                                                     button_size=(30, 10),
-                                                     should_be_placed=False)
-        
+        #  | Card details frame widgets
+        self.card_label_clone = None
+        self.card_effect_label = None
+        self.card_name_label = None
+        self.card_effect_frame = None
+
         # | Init necessary variables
         self.cards_in_list_width = int(624 * 0.3) # make this dinamically calculated with config.CARD_PER_ROW_IN_LIST
         self.cards_in_list_height = int(624 * 0.3)
@@ -114,7 +122,6 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         # | Place the widgets
         self.cards_list_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=10, expand=True) # Pack the frame to the left
         self.cards_details_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=10, expand=True) # Pack the frame to the right
-        self.cards_tab_import_button.pack(side=tk.BOTTOM, expand=False, padx=10, pady=10) # Pack the button to the bottom
         # Widgets that should be placed inside of self.cards_list_frame are placed after required data is loaded 
                    
         # CARD and CARD SEARCH TAB
@@ -132,47 +139,47 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
 
         self.attributes_icons = {
             "DARK": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "dark.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "dark.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "LIGHT": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "light.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "light.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "FIRE": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "fire.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "fire.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "WATER": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "water.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "water.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "WIND": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "wind.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "wind.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "EARTH": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "earth.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "earth.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "DIVINE":CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "divine.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "divine.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "SPELL": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "spell.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "spell.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "TRAP": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "trap.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "attributes", "trap.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text="")
@@ -180,162 +187,167 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
 
         self.races_icons = {
             "Aqua": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "aqua.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "aqua.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Beast": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "beast.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "beast.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Beast-Warrior": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "beast_warrior.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "beast_warrior.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                width=self.card_icon_size,
+                                height=self.card_icon_size,
+                                text=""), 
+            "Creator-God": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "creator_god.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Cyberse": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "cyberse.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "cyberse.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Dinosaur": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "dinosaur.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "dinosaur.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Divine-Beast": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "divine_beast.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "divine_beast.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Dragon": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "dragon.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "dragon.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Fairy": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "fairy.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "fairy.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Fiend": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "fiend.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "fiend.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Fish": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "fish.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "fish.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Insect": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "insect.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "insect.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Illusion": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "illusion.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "illusion.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Machine": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "machine.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "machine.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Plant": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "plant.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "plant.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Psychic": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "psychic.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "psychic.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Pyro": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "pyro.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "pyro.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Reptile": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "reptile.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "reptile.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Rock": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "rock.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "rock.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Sea serpent": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "sea_serpent.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "sea_serpent.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Spellcaster": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "spellcaster.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "spellcaster.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Thunder": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "thunder.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "thunder.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Warrior": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "warrior.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "warrior.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Winged Beast": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "winged_beast.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "winged_beast.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Wyrm": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "wyrm.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "wyrm.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""), 
             "Zombie": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "zombie.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "zombie.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Continuous": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "Continuous.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "Continuous.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Counter": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "Counter.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "Counter.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Equip": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "Equip.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "Equip.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Field": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "Field.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "Field.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Ritual": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "Ritual.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "Ritual.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Quick-Play": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "Quick-Play.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "Quick-Play.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text=""),
             "Normal": CTk.CTkLabel(master=self.cards_tab_attrib_race_subtype_frame,
-                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "Normal.png")), size=(self.card_icon_size, self.card_icon_size)),
+                                image=CTk.CTkImage(Image.open(os.path.join("data", "img", "races", "Normal.png")), size=(self.card_icon_size, self.card_icon_size)),
                                 width=self.card_icon_size,
                                 height=self.card_icon_size,
                                 text="")
@@ -344,7 +356,9 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         # CARD SEARCH TAB
         # | Init widgets
         # | Frame necessary to properly organize the widgets
-        self.card_search_tab_options_frame = CTk.CTkFrame(card_search_tab, corner_radius=25, fg_color="#333333")
+        self.card_search_tab_options_frame = CTk.CTkFrame(card_search_tab, 
+                                                          corner_radius=25, 
+                                                          fg_color="#333333")
 
         #   | Label and entry
         self.card_search_tab_label = CTk.CTkLabel(self.card_search_tab_options_frame, text="Enter name of card:", font=("Helvetica", 16))
@@ -370,24 +384,18 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         self.card_search_tab_type_label = CTk.CTkLabel(self.card_search_tab_options_frame, text="Type:", font=("Helvetica", 16))
         self.card_search_tab_type_options = CTk.CTkOptionMenu(self.card_search_tab_options_frame, values=type_options, fg_color="#333333", button_hover_color="#555555")
 
-        #   | Search buttons
-        self.card_search_tab_search_button = create_button(master = self.card_search_tab_options_frame,
-                                                           command = self.search_cards,
-                                                           text = "Search",
-                                                           fg_color = "#555555",
-                                                           button_size = (100, 30),
-                                                           corner_radius=25,
-                                                           should_be_placed=False)   
-        width = 100
-        height = 30
+        #   | Search buttons 
         self.card_search_tab_search_button = CTk.CTkButton(master=self.card_search_tab_options_frame,
                                                            text="Search",
                                                            fg_color="transparent",
                                                            bg_color="transparent",
+                                                           hover_color="#5b5b5b",
+                                                           hover=True,
                                                            border_color='#5b5b5b',
                                                            border_width=2,  # Set the border width
-                                                           corner_radius=25
-                    )
+                                                           corner_radius=25,
+                                                           command=self.search_cards
+                                                        )
 
         # | Pack the widgets
         self.card_search_tab_label.pack(side=tk.TOP, fill=tk.X, padx=20, pady=10) # Pack the label to the top with padding
@@ -410,60 +418,6 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
 
         #   | Pack self.card_search_tab_options_frame
         self.card_search_tab_options_frame.pack(side=tk.TOP, fill=tk.X, padx=20, pady=10)
-
-        # HELP TAB
-        # | Init widgets
-        navigation_help_label_string = (
-            "Navigation:\n\n"
-            "Left click and drag to move the canvas.\n"
-            "Right click and drag to select item.\n"
-            "Scroll to zoom in and out."
-        )
-        keybinds_help_label_string = (
-            "Keybinds:\n\n"
-            f"{config.keybinds['arrow_placement']} - Place arrow\n"
-            f"{config.keybinds['card_placement']} - Place card\n"
-            f"{config.keybinds['delete_selected']} - Delete selected item(s)\n"
-            f"{config.keybinds['move_selected']} - Move selected item(s)\n"
-        )
-        IO_help_label_string = (
-            "Input/Output:\n\n"
-            f"Ctrl + S - Save the current canvas\n"
-            f"Ctrl + E - Export the current canvas as png image\n"
-        )
-
-        self.navigation_help_frame = CTk.CTkFrame(help_tab, corner_radius=25, fg_color="#333333")
-        self.navigation_help_label = CTk.CTkLabel(
-            self.navigation_help_frame, anchor="center", text=navigation_help_label_string, font=("Helvetica", 16)
-        )
-        self.keybinds_help_frame = CTk.CTkFrame(help_tab, corner_radius=25, fg_color="#333333")
-        self.keybinds_help_label = CTk.CTkLabel(
-            self.keybinds_help_frame, anchor="center", text=keybinds_help_label_string, font=("Helvetica", 16)
-        )
-        self.IO_help_frame = CTk.CTkFrame(help_tab, corner_radius=25, fg_color="#333333")
-        self.IO_help_label = CTk.CTkLabel(
-            self.IO_help_frame, anchor="center", text=IO_help_label_string, font=("Helvetica", 16)
-        )
-        self.about_help_frame = CTk.CTkFrame(help_tab, corner_radius=25, fg_color="#333333")
-        self.about_help_label = CTk.CTkLabel(
-            self.about_help_frame, anchor="center", text=f"About:\n\nOpen source created by Pietro Marini (marini-pietro on GitHub)\nVersion: {config.VERSION}", font=("Helvetica", 16)
-        )
-
-        # | Place the widgets
-        self.navigation_help_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        self.keybinds_help_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-        self.IO_help_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-        self.about_help_frame.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
-
-        help_tab.grid_rowconfigure(0, weight=1, uniform="row")
-        help_tab.grid_rowconfigure(1, weight=1, uniform="row")
-        help_tab.grid_columnconfigure(0, weight=1, uniform="col")
-        help_tab.grid_columnconfigure(1, weight=1, uniform="col")
-
-        self.navigation_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.keybinds_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.IO_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        self.about_help_label.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Event handling functions
 
@@ -600,26 +554,40 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
             None
         """
 
+        # | Initialize necessary flags
+        is_card_monster: bool = card.type not in ["Trap Card", "Spell Card"]  # Check if the card is a monster card
+        is_card_effect_long: bool = len(card.effect) > 475  # Check if the card effect is considered long TODO figure out right threshold (changing pack padding values will change it)
+        is_card_link_monster: bool = card.type == "Link Monster"  # Check if the card is a link monster
+        card_label_present: bool = False  # Flag to check if the card label clone is present
+        card_effect_label_present: bool = False  # Flag to check if the card effect label is present
+        card_name_label_present: bool = False  # Flag to check if the card name label is present
+
         # | Unpack all widgets to prepare for the new card
-        for widget in self.cards_details_frame.winfo_children(): # Unpack all widgets in the cards_details_frame
-            if widget != self.cards_tab_import_button:
+        for widget in self.cards_details_frame.winfo_children(): 
+            # Unpack all widgets in the cards_details_frame except those that can be reused to optimize performance
+            if widget != self.card_label_clone or \
+               widget != self.card_effect_label or \
+               widget != self.card_name_label:
                 widget.pack_forget()
+
+            # Check if the widgets that can be reused are present (the flags are necessary so that if they are not updated the widgets are created)
+            if widget == self.card_label_clone: card_label_present = True
+            elif widget == self.card_effect_label: card_effect_label_present = True
+            elif widget == self.card_name_label: card_name_label_present = True
 
         [widget.pack_forget() for widget in self.cards_tab_attrib_race_subtype_frame.winfo_children()]  # Clear the attribute and race sub frame
         [widget.pack_forget() for widget in self.cards_tab_atk_def_level_frame.winfo_children()]  # Clear the atk, def and level/rank sub frame
         [widget.pack_forget() for widget in self.cards_tab_stats_frame.winfo_children()]  # Clear the stats frame (the one that contains self.cards_tab_attrib_race_subtype_frame and self.cards_tab_atk_def_level_frame)
 
-        # | Initialize necessary flags
-        is_card_monster: bool = card.type not in ["Trap Card", "Spell Card"]  # Check if the card is a monster card
-        is_card_effect_long: bool = len(card.effect) > 500  # Check if the card effect is considered long TODO figure out right threshold (changing pack padding values will change it)
-        is_card_link_monster: bool = card.type == "Link Monster"  # Check if the card is a link monster
-
         # | Create new widgets
-        card_label_clone = CTk.CTkLabel(master=self.cards_details_frame, # Create the image of the card (the card image has to be cloned so it can appear both in the list and in self.cards_details_frame)
-                                        image=card.images["list"].cget("image"), 
-                                        width=self.cards_in_list_width,
-                                        height=self.cards_in_list_height,
-                                        text="")
+        if card_label_present: # Check if the card label clone is already in the cards_details_frame just change the image
+            self.card_label_clone.configure(image=card.images["list"].cget("image"))
+        else: # Else create a new card label clone
+            self.card_label_clone = CTk.CTkLabel(master=self.cards_details_frame, # Create the image of the card (the card image has to be cloned so it can appear both in the list and in self.cards_details_frame)
+                                            image=card.images["list"].cget("image"), 
+                                            width=self.cards_in_list_width,
+                                            height=self.cards_in_list_height,
+                                            text="")
 
         #  | Create appropriate attribute icons for the card
         if card.type == "Trap Card": attribute_icon: CTk.CTkLabel = self.attributes_icons["TRAP"] # If the card is a trap set the attribute icon to the trap icon
@@ -630,27 +598,39 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         race_icon: CTk.CTkLabel = self.races_icons.get(card.race, self.races_icons["Normal"])  # Get the race icon from the dictionary, default to "Normal" if not found
 
         #  | Create the name of the card
-        card_name_label = CTk.CTkLabel(master=self.cards_details_frame,
-                                              text=card.name,
-                                              font=("Helvetica", 20),
-                                              wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
+        if card_name_label_present: # Check if the card name label is already in the cards_details_frame
+            self.card_name_label.configure(text=card.name)
+        else:
+            self.card_name_label = CTk.CTkLabel(master=self.cards_details_frame,
+                                                text=card.name,
+                                                font=("Helvetica", 20),
+                                                wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
 
         #  | Create the text (and the summoning requirements if the card is an extra deck monster) of the card
         if is_card_effect_long:
-            card_effect_frame = CTk.CTkScrollableFrame(master=self.cards_details_frame, 
-                                                              corner_radius=25, 
-                                                              width=450,
-                                                              fg_color="#333333")
-            card_effect_label = CTk.CTkLabel(master=card_effect_frame,
+            if self.card_effect_frame in self.cards_details_frame.winfo_children(): # Check if the card effect frame is already in the cards_details_frame
+                self.card_effect_label.configure(text=card.effect)
+            else:
+                self.card_effect_frame = CTk.CTkScrollableFrame(master=self.cards_details_frame, 
+                                                                corner_radius=25, 
+                                                                width=450,
+                                                                fg_color="#333333")
+                if self.card_effect_label in self.card_effect_frame.winfo_children(): # Check if the card effect label is already in the cards_details_frame
+                    self.card_effect_label.configure(text=card.effect)
+                else:
+                    self.card_effect_label = CTk.CTkLabel(master=self.card_effect_frame,
                                                         text=card.effect,
                                                         font=("Helvetica", 16),
                                                         wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
-            card_effect_label.pack()
+                    self.card_effect_label.pack()
         else:
-            card_effect_label = CTk.CTkLabel(master=self.cards_details_frame,
-                             text=card.effect,
-                             font=("Helvetica", 16),
-                             wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
+            if card_effect_label_present: # Check if the card effect label is already in the cards_details_frame
+                self.card_effect_label.configure(text=card.effect)
+            else:
+                self.card_effect_label = CTk.CTkLabel(master=self.cards_details_frame,
+                                                      text=card.effect,
+                                                      font=("Helvetica", 16),
+                                                      wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
         
         #  | Create the stats labels
         if is_card_monster: # Check if the card is a monster card
@@ -691,14 +671,14 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         if is_card_monster: self.cards_tab_atk_def_level_frame.pack(side=tk.LEFT, padx=(5, 10), pady=(vert_padding, vert_padding))
 
         #  | Pack the contents of self.cards_details_frame
-        card_label_clone.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the card image
+        self.card_label_clone.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the card image
         self.cards_tab_stats_frame.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the stats frame
-        card_name_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the card name
-        if not is_card_effect_long: card_effect_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # If the card effect is not long pack the label directly into self.cards_details_frame
-        else: card_effect_frame.pack(side=tk.TOP, pady=(vert_padding, 0)) # Else pack the scrollable frame
+        self.card_name_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the card name
+        if not is_card_effect_long: self.card_effect_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # If the card effect is not long pack the label directly into self.cards_details_frame
+        else: self.card_effect_frame.pack(side=tk.TOP, pady=(vert_padding, 0)) # Else pack the scrollable frame
         
     # I/O related functions
-    def export_canvas_to_png(self, file_path): # TODO check if it works properly
+    def export_canvas_as_img(self, file_path): # TODO check if it works properly
         """
         Exports the current canvas to a PNG file.
 
@@ -731,13 +711,32 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         # Save the PIL image to the specified file path
         image.save(file_path + ".png")
         
-    async def show(self):
+    def show(self) -> None:
         """
         Shows the canvas, and destroys the root window when the window is closed.
         """
         
-        await self.log_handler.log(type="INFO", message=f"Created new sheet with name: {self.sheet_name}.") # Necessary here even if not logically correct to properly, log the sheet name if the user doesn't provide one (see first lines of init method)                                                                                                                                                                       
-        self.canvas.pack(fill=tk.BOTH, expand=True)                                                   
+        self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window
+        self.root_window.title(self.sheet_name) # Set the title of the window to the sheet name
+
+        self.menu_bar = CTkMenuBar(master=self.root_window,
+                                   bg_color="#242424")
+        
+        file_button = self.menu_bar.add_cascade(text="File",
+                                                hover_color="#2b2b2b")
+        file_dropdown = CustomDropdownMenu(widget=file_button)
+        file_dropdown.add_option(option="Open", command=lambda: print("Opening sheet"))
+        file_dropdown.add_option(option="Save", command=lambda: print("Saving sheet"))
+        file_dropdown.add_option(option="Export as PNG", command=lambda: self.export_canvas_as_img(file_path=filedialog.asksaveasfilename(title="Save canvas as image", filetypes=[("PNG files", "*.png")])))
+        
+        action_button = self.menu_bar.add_cascade(text="Action",
+                                                  hover_color="#2b2b2b")
+        action_dropdown = CustomDropdownMenu(widget=action_button)
+        action_dropdown.add_option(option="Import YDK", command=self.import_ydk)
+
+        about_button = self.menu_bar.add_cascade(text="About",
+                                                 hover_color="#2b2b2b")
+
         self.tabs.pack(fill=tk.BOTH, expand=True)
 
     def import_ydk(self):  
@@ -838,19 +837,6 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         self.root_window.destroy()
 
     # Setters
-    def set_root_window(self, root_window):
-        """
-        Sets the root window of the canvas.
-        Should be called before once before calling the show method.
-        Necessary because trying to set the root window in the constructor of app.py causes the program to crash (recursion limit).
-
-        params: root_window: tk.Tk - The root window of the canvas.
-        return: None
-        """
-        self.root_window = root_window
-        self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window
-        self.root_window.title(self.sheet_name) # Set the title of the window to the sheet name
-
     def set_canvas_color(self, color: str):
         """
         Sets the color of the canvas.

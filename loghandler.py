@@ -13,7 +13,28 @@ class LogHandler:
         self.logger.addHandler(handler)
         self.handler = handler
 
-    async def log(self, message, type):
+    async def async_log(self, message, type):
+        """
+        Logs a message to the log file.
+        
+        params:
+            message: str The message to log.
+            type: str The type of message to log.
+        raises:
+            None    
+        returns:
+            None
+        """
+        if type == "INFO":
+            self.logger.info(message)
+        elif type == "ERROR":
+            self.logger.error(message)
+        elif type == "WARNING":
+            self.logger.warning(message)
+        elif type == "DEBUG":
+            self.logger.debug(message)
+
+    def log(self, message, type):
         """
         Logs a message to the log file.
         

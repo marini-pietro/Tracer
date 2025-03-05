@@ -3,6 +3,7 @@ requests
 tk
 tcl
 customtkinter
+CTkMenuBar
 CTkMessagebox
 aiohttp
 google-auth 

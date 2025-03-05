@@ -50,9 +50,9 @@ class Card():
         # Handle images paths and objects
         self.img_root_window = img_root_window
         self.images_paths: dict[str, str] = {
-            "normal": os_path.join("data", "img", "cached_images", "cards", f"{id}.jpg"),
-            "small": os_path.join("data", "img", "cached_images", "cards_small", f"{id}.jpg"),
-            "cropped": os_path.join("data", "img", "cached_images", "cards_cropped", f"{id}.jpg")
+            "normal": os_path.join("data", "img", "cache", "cards", f"{id}.jpg"),
+            "small": os_path.join("data", "img", "cache", "cards_small", f"{id}.jpg"),
+            "cropped": os_path.join("data", "img", "cache", "cards_cropped", f"{id}.jpg")
         }
 
         self.pillow_images: dict[str, Image.Image] = {}

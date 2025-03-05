@@ -102,7 +102,7 @@ class YDKParser:
         asyncio.run(self.cache_data())
 
         # Log that the ydk file has been read
-        asyncio.run(self.log_handler.log(type="INFO", message=f"Read ydk file {ydk_file}."))
+        asyncio.run(self.log_handler.async_log(type="INFO", message=f"Read ydk file {ydk_file}."))
 
         # Delete the card data and card image URLs lists to free up memory
         self.card_data_output = []
@@ -164,7 +164,7 @@ class YDKParser:
 
         async with self.semaphore: # limit the number of concurrent threads to 20
 
-            BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
+            BASE_CACHED_IMG_PATH: str = "data/img/cache/"
             url_splits: list[str] = url.split("/")
 
             card_id: str = url_splits[-1][:-4] # get everything except the last 4 characters (".jpg") to get the card id
@@ -180,9 +180,9 @@ class YDKParser:
                             with open(final_img_path, 'wb') as f:
                                 f.write(await response.read())
                         
-                            await self.log_handler.log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
+                            await self.log_handler.async_log(type="INFO", message=f"Downloaded image from {url} to {final_img_path}")
                     else:
-                        await self.log_handler.log(type="ERROR", message=f"Failed to download image from {url}")
+                        await self.log_handler.async_log(type="ERROR", message=f"Failed to download image from {url}")
 
     async def cache_json(self, card_data: dict):
         """
@@ -204,7 +204,7 @@ class YDKParser:
             if not os.path.exists(card_data_path): # if the card data is not cached
                 with open(card_data_path, "w") as json_file: # write the card data to the file
                     json.dump(card_data, json_file, indent=4) # indent the JSON file for better readability
-                await self.log_handler.log(type="INFO", message=f"Cached card data for card id {card_id}")
+                await self.log_handler.async_log(type="INFO", message=f"Cached card data for card id {card_id}")
 
     async def clear_cache(self):
         """
@@ -219,22 +219,20 @@ class YDKParser:
         """
 
         # Delete images
-        BASE_CACHED_IMG_PATH: str = "data/img/cached_images/"
+        BASE_CACHED_IMG_PATH: str = "data/img/cache/"
         for img_type in ["cards", "cards_small", "cards_cropped"]:
             img_path: str = os.path.join(BASE_CACHED_IMG_PATH, img_type)
             for img in os.listdir(img_path):
                 final_path = os.path.join(img_path, img)
-                if final_path.endswith(".jpg"): # Additional checks to avoid deleting .gitkeep files
-                    os.remove(final_path)
+                os.remove(final_path)
 
         # Delete JSON files
         BASE_CACHED_CARD_DATA_PATH: str = "data/card_data/"
         for card_data in os.listdir(BASE_CACHED_CARD_DATA_PATH):
             final_path = os.path.join(BASE_CACHED_CARD_DATA_PATH, card_data)
-            if final_path.endswith(".json"): # Additional checks to avoid deleting .gitkeep files
-                os.remove(final_path)
+            os.remove(final_path)
 
-        await self.log_handler.log(type="INFO", message="Cleared all cache.")
+        await self.log_handler.async_log(type="INFO", message="Cleared all cache.")
     
     def set_app_reference(self, app):
         """
