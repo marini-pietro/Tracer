@@ -78,9 +78,10 @@ All contributions regardless of the nature or amount of changes will be document
 - [YGOProDeck](https://ygoprodeck.com/) for the awesome site and the API
 - [CTkColorWheel](https://github.com/Akascape/CTkColorPicker) for the color picker widget that I modified to fit the needs of the project.
 - [CTkMessageBox](https://github.com/Akascape/CTkMessagebox?tab=CC0-1.0-1-ov-file)
+- [CTkMenuBar](https://github.com/Akascape/CTkMenuBar?tab=readme-ov-file)
 - [Level/Rank icon](https://yugipedia.com/wiki/User:Dinoguy1000/icons#Property)
 - [Spell icons](https://yugipedia.com/wiki/User:Dinoguy1000/icons#Property)
-- [Races icons](https://yugipedia.com/wiki/Category:Yu-Gi-Oh!_Master_Duel_Type_icons)
+- [Races icons](https://yugioh.fandom.com/wiki/Type)
 - [Attribute icons](https://www.deviantart.com/aaiki/art/Hi-Res-Yugioh-Attributes-836887394)
 - [Github icon](https://www.iconfinder.com/icons/211904/social_github_icon)
 - [Settings icon](https://www.iconfinder.com/icons/326699/settings_icon)

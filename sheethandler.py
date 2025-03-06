@@ -2,6 +2,7 @@ try:
     import os
     import customtkinter as CTk
     from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
+    from CTkMessagebox import CTkMessagebox
     import tkinter as tk
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
@@ -11,12 +12,14 @@ except ImportError:
     os.system("pip install -r requirements.txt")
     import customtkinter as CTk
     from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
+    from CTkMessagebox import CTkMessagebox
     import tkinter as tk
     from tkinter import filedialog
     from PIL import Image, ImageTk, ImageDraw
 
 import config
 from datetime import datetime
+from card import Card
 
 class SheetHandler: #TODO add possibility to discard current canvas and return to main menu
     def __init__(self, 
@@ -33,7 +36,26 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         self.sheet_name = f"YGO_combo_sheet_{datetime.now().strftime('%Y-%m-%d')}" # Set the sheet name to the current date if no name is provided TODO implement logic to update the name with a number if a sheet with the same name already exists
 
         # Init widgets
-        self.menu_bar = None # This widget has to be created in the show method to avoid it showing up in the main menu
+        self.menu_bar = CTkMenuBar(master=self.root_window,
+                                    bg_color="#242424")
+        self.menu_bar.pack_forget()  # Hide the menu bar initially
+            
+        file_button = self.menu_bar.add_cascade(text="File",
+                                                    hover_color="#2b2b2b")
+        file_dropdown = CustomDropdownMenu(widget=file_button)
+        file_dropdown.add_option(option="Open", command=lambda: print("Opening sheet"))
+        file_dropdown.add_option(option="Save", command=lambda: print("Saving sheet"))
+        file_dropdown.add_option(option="Export as PNG", command=lambda: self.export_canvas_as_img(file_path=filedialog.asksaveasfilename(title="Save canvas as image", filetypes=[("PNG files", "*.png")])))
+        file_dropdown.add_option(option="Discard current sheet", command=self.discard_current_sheet)
+
+        action_button = self.menu_bar.add_cascade(text="Action",
+                                                    hover_color="#2b2b2b")
+        action_dropdown = CustomDropdownMenu(widget=action_button)
+        action_dropdown.add_option(option="Import YDK", command=self.import_ydk)
+        action_dropdown.add_option(option="Add card from ID", command= lambda: self.add_card_from_id(card_id="1", deck_type="main"))
+
+        about_button = self.menu_bar.add_cascade(text="About",
+                                                    hover_color="#2b2b2b")
 
         # | Create tabview widget and its tabs
         self.tabs = CTk.CTkTabview(master=self.root_window,
@@ -45,6 +67,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         canvas_tab = self.tabs.add("Canvas")
         cards_tab = self.tabs.add("Cards")
         card_search_tab = self.tabs.add("Card search")
+        self.tabs.delete("Card search") # Remove the card search tab for now TODO implement card search functionality in future version
 
         # Initialize variables
         self.scale: float = 1.0 # The scale of the canvas
@@ -110,10 +133,32 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                                                      font=("Helvetica", 16))
         
         #  | Card details frame widgets
+        self.card_effect_frame = CTk.CTkScrollableFrame(master=self.cards_details_frame, 
+                                                        corner_radius=25, 
+                                                        width=450,
+                                                        fg_color="#333333")
+
+        self.cards_tab_ygoprodeck_button = CTk.CTkLabel(self.cards_details_frame,
+                                                        text="",
+                                                        image=CTk.CTkImage(Image.open(os.path.join("data", "img", "ygoprodeck.png")), size=(50, 50)),
+                                                        width=50,
+                                                        height=50,
+                                                        fg_color="transparent",
+                                                        bg_color="transparent"
+                                                        )
+        
+        self.cards_tab_ygoprodeck_button_long = CTk.CTkLabel(self.card_effect_frame,
+                                                             text="",
+                                                             image=CTk.CTkImage(Image.open(os.path.join("data", "img", "ygoprodeck.png")), size=(50, 50)),
+                                                             width=50,
+                                                             height=50,
+                                                             fg_color="transparent",
+                                                             bg_color="transparent"
+                                                             )
+
         self.card_label_clone = None
         self.card_effect_label = None
         self.card_name_label = None
-        self.card_effect_frame = None
 
         # | Init necessary variables
         self.cards_in_list_width = int(624 * 0.3) # make this dinamically calculated with config.CARD_PER_ROW_IN_LIST
@@ -554,9 +599,10 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
             None
         """
 
-        # | Initialize necessary flags
+        # | Initialize necessary variables
+        vert_padding = 15  # Vertical padding between widgets (not in between stats frame and attribute/race/subtype frame)
         is_card_monster: bool = card.type not in ["Trap Card", "Spell Card"]  # Check if the card is a monster card
-        is_card_effect_long: bool = len(card.effect) > 475  # Check if the card effect is considered long TODO figure out right threshold (changing pack padding values will change it)
+        is_card_effect_long: bool = len(card.effect) > 460  # Check if the card effect is considered long TODO figure out right threshold (changing pack padding values will change it)
         is_card_link_monster: bool = card.type == "Link Monster"  # Check if the card is a link monster
         card_label_present: bool = False  # Flag to check if the card label clone is present
         card_effect_label_present: bool = False  # Flag to check if the card effect label is present
@@ -578,6 +624,11 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         [widget.pack_forget() for widget in self.cards_tab_attrib_race_subtype_frame.winfo_children()]  # Clear the attribute and race sub frame
         [widget.pack_forget() for widget in self.cards_tab_atk_def_level_frame.winfo_children()]  # Clear the atk, def and level/rank sub frame
         [widget.pack_forget() for widget in self.cards_tab_stats_frame.winfo_children()]  # Clear the stats frame (the one that contains self.cards_tab_attrib_race_subtype_frame and self.cards_tab_atk_def_level_frame)
+        self.cards_tab_ygoprodeck_button.pack_forget()  # Clear the ygoprodeck button
+
+        # | Unbind events
+        self.cards_tab_ygoprodeck_button.unbind("<Button-1>")  # Unbind the button to open the ygoprodeck page of the card
+        self.cards_tab_ygoprodeck_button_long.unbind("<Button-1>")  # Unbind the button to open the ygoprodeck page of the card
 
         # | Create new widgets
         if card_label_present: # Check if the card label clone is already in the cards_details_frame just change the image
@@ -606,15 +657,11 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                                                 font=("Helvetica", 20),
                                                 wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
 
-        #  | Create the text (and the summoning requirements if the card is an extra deck monster) of the card
+        #  | Create the text  (and the summoning requirements if the card is an extra deck monster) of the card
         if is_card_effect_long:
             if self.card_effect_frame in self.cards_details_frame.winfo_children(): # Check if the card effect frame is already in the cards_details_frame
                 self.card_effect_label.configure(text=card.effect)
             else:
-                self.card_effect_frame = CTk.CTkScrollableFrame(master=self.cards_details_frame, 
-                                                                corner_radius=25, 
-                                                                width=450,
-                                                                fg_color="#333333")
                 if self.card_effect_label in self.card_effect_frame.winfo_children(): # Check if the card effect label is already in the cards_details_frame
                     self.card_effect_label.configure(text=card.effect)
                 else:
@@ -623,6 +670,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                                                         font=("Helvetica", 16),
                                                         wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
                     self.card_effect_label.pack()
+                    self.cards_tab_ygoprodeck_button_long.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the ygoprodeck button
         else:
             if card_effect_label_present: # Check if the card effect label is already in the cards_details_frame
                 self.card_effect_label.configure(text=card.effect)
@@ -649,8 +697,11 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                                                             text=f"Link - {card.linkval}",
                                                             font=("Helvetica", 16))
             
+        # | Bind events
+        if not is_card_effect_long: self.cards_tab_ygoprodeck_button.bind("<Button-1>", lambda _: os.system(f"start {card.ygoprodeck_url}"))  # Bind the button to open the ygoprodeck page of the card
+        else: self.cards_tab_ygoprodeck_button_long.bind("<Button-1>", lambda _: os.system(f"start {card.ygoprodeck_url}"))  # Bind the button to open the ygoprodeck page of the card
+
         # | Pack the widgets
-        vert_padding = 15  # Vertical padding between widgets (not in between stats frame and attribute/race/subtype frame)
         #  | Pack the contents of self.cards_tab_attrib_race_subtype_frame
         attribute_icon.pack(side=tk.LEFT, padx=(10, 5), pady=vert_padding)
         race_icon.pack(side=tk.LEFT, padx=(5, 10), pady=vert_padding) 
@@ -677,6 +728,9 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         if not is_card_effect_long: self.card_effect_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # If the card effect is not long pack the label directly into self.cards_details_frame
         else: self.card_effect_frame.pack(side=tk.TOP, pady=(vert_padding, 0)) # Else pack the scrollable frame
         
+        #  | Pack the ygoprodeck button
+        if not is_card_effect_long: self.cards_tab_ygoprodeck_button.pack(side=tk.TOP, pady=(vert_padding, 0))
+
     # I/O related functions
     def export_canvas_as_img(self, file_path): # TODO check if it works properly
         """
@@ -717,27 +771,53 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         """
         
         self.root_window.protocol("WM_DELETE_WINDOW", self.on_close) # Bind the on_close method to the close button of the window
-        self.root_window.title(self.sheet_name) # Set the title of the window to the sheet name
+        self.root_window.title(self.sheet_name) # Set the title of the window to the sheet name            
 
-        self.menu_bar = CTkMenuBar(master=self.root_window,
-                                   bg_color="#242424")
-        
-        file_button = self.menu_bar.add_cascade(text="File",
-                                                hover_color="#2b2b2b")
-        file_dropdown = CustomDropdownMenu(widget=file_button)
-        file_dropdown.add_option(option="Open", command=lambda: print("Opening sheet"))
-        file_dropdown.add_option(option="Save", command=lambda: print("Saving sheet"))
-        file_dropdown.add_option(option="Export as PNG", command=lambda: self.export_canvas_as_img(file_path=filedialog.asksaveasfilename(title="Save canvas as image", filetypes=[("PNG files", "*.png")])))
-        
-        action_button = self.menu_bar.add_cascade(text="Action",
-                                                  hover_color="#2b2b2b")
-        action_dropdown = CustomDropdownMenu(widget=action_button)
-        action_dropdown.add_option(option="Import YDK", command=self.import_ydk)
-
-        about_button = self.menu_bar.add_cascade(text="About",
-                                                 hover_color="#2b2b2b")
+        self.menu_bar.pack(anchor="n", fill="x") # Pack the menu bar to the top of the window
 
         self.tabs.pack(fill=tk.BOTH, expand=True)
+
+    def place_cards_in_list(self) -> None:
+        """
+        Places the cards in the cards_list_frame.
+
+        params:
+            None
+        return:
+            None
+        raises:
+            None
+        """
+
+        self.cards_empty_label.pack_forget() # Remove the empty label
+        [widget.grid_forget() for widget in self.cards_list_frame.winfo_children()] # Clear the cards_list_frame of any possible card labels 
+
+        # Figure out if the images should be cropped or not
+        if config.USE_CROPPED_IMAGES: image_type: str = "list"
+        else: image_type: str = "small"
+
+        # Place main deck images
+        for i, card in enumerate(self.app.card_objects["main"]): # For each card in the main deck
+            card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
+            card.images[image_type].bind("<Button-1>", lambda _, card=card: self.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
+
+        # Place extra deck images
+        if len(self.app.card_objects["extra"]) > 0: # If there are cards in the extra deck
+            image_last_row: int = (len(self.app.card_objects["main"]) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck images
+            self.cards_tab_extradeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
+            start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the extra deck images
+            for i, card in enumerate(self.app.card_objects["extra"], start=start_index): # For each card in the extra deck
+                card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
+                card.images[image_type].bind("<Button-1>", lambda _, card=card: self.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
+
+        # Place side deck images
+        if len(self.app.card_objects["side"]) > 0: # If there are cards in the side deck
+            image_last_row: int = ((len(self.app.card_objects["main"]) + len(self.app.card_objects["extra"])) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck and extra deck images plus one for the extra deck label
+            self.cards_tab_sidedeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
+            start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the side deck images
+            for i, card in enumerate(self.app.card_objects["side"], start=start_index): # For each card in the side deck
+                card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5)
+                card.images[image_type].bind("<Button-1>", lambda _, card=card: self.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
 
     def import_ydk(self):  
         """
@@ -771,36 +851,59 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                     card.update_list_image(width=self.cards_in_list_width,
                                            height=self.cards_in_list_height) # Create the list image for the card
 
-        self.cards_empty_label.pack_forget() # Remove the empty label
-        [widget.grid_forget() for widget in self.cards_list_frame.winfo_children()] # Clear the cards_list_frame of any possible card labels
-
-        # Figure out if the images should be cropped or not
-        if config.USE_CROPPED_IMAGES: image_type: str = "list"
-        else: image_type: str = "small"      
-
-        # Place main deck images
-        for i, card in enumerate(self.app.card_objects["main"]): # For each card in the main deck
-            card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
-            card.images[image_type].bind("<Button-1>", lambda _, card=card: self.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
-
-        # Place extra deck images
-        if len(self.app.card_objects["extra"]) > 0: # If there are cards in the extra deck
-            image_last_row: int = (len(self.app.card_objects["main"]) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck images
-            self.cards_tab_extradeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
-            start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the extra deck images
-            for i, card in enumerate(self.app.card_objects["extra"], start=start_index): # For each card in the extra deck
-                card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5) # Pack the cropped small images in a grid with config.CARD_PER_ROW_IN_LIST per row
-                card.images[image_type].bind("<Button-1>", lambda _, card=card: self.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
-
-        # Place side deck images
-        if len(self.app.card_objects["side"]) > 0: # If there are cards in the side deck
-            image_last_row: int = ((len(self.app.card_objects["main"]) + len(self.app.card_objects["extra"])) + config.CARD_PER_ROW_IN_LIST - 1) // config.CARD_PER_ROW_IN_LIST # Calculate the last row of the main deck and extra deck images plus one for the extra deck label
-            self.cards_tab_sidedeck_label.grid(row=image_last_row + 1, column=0, columnspan=config.CARD_PER_ROW_IN_LIST, pady=(10, 10)) # Place the label in a new row after all the images
-            start_index: int = (image_last_row + 2) * config.CARD_PER_ROW_IN_LIST # Calculate the start index for the side deck images
-            for i, card in enumerate(self.app.card_objects["side"], start=start_index): # For each card in the side deck
-                card.images[image_type].grid(row=i // config.CARD_PER_ROW_IN_LIST, column=i % config.CARD_PER_ROW_IN_LIST, padx=5, pady=5)
-                card.images[image_type].bind("<Button-1>", lambda _, card=card: self.focus_on_card(card=card)) # Bind the cropped small image to a function to bring the card into focus in the card_details_frame
+        self.place_cards_in_list() # Place the cards in the list    
     
+    def add_card_from_id(self, card_id: str, deck_type: str) -> None:
+        """
+        Adds a card to the card_objects list from the card ID.
+
+        params:
+            card_id: str - The ID of the card to add.
+            deck_type: str - The type of the deck to add the card to
+        return:
+            None
+        raises:
+            None
+        """
+
+        card_data = self.api_handler.request_card_data(search_data={"id": card_id}) # Request the card data from the API
+        if card_data == "Error": 
+            message_box = CTkMessagebox(master=self.root_window,
+                                        title="Card not found",
+                                        message=f"Card with ID {card_id} not found.",
+                                        options=["Close"],
+                                        icon="warning",
+                                        justify="center"
+                                        )
+        else:
+            if deck_type == "main" and card_data["data"][0]["type"] in ["Link Monster", "Fusion Monster", "XYZ Monster", "Synchro Monster"]:
+
+                message_box = CTkMessagebox(master=self.root_window,
+                                            title="Invalid card type",
+                                            message="Extra deck monsters are not allowed in the main deck.",
+                                            options=["Close"],
+                                            icon="warning",
+                                            justify="center"
+                                            )
+            else:
+                card_type: str = card_data["data"][0]["type"] # Get the type of the card
+                card = Card(id=card_id,
+                            name=card_data["data"][0]["name"],
+                            type=card_type,
+                            linkval=card_data["data"][0]["linkval"] if card_type == "Link Monster" else None,
+                            level=card_data["data"][0]["level"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                            atk=card_data["data"][0]["atk"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                            def_=card_data["data"][0]["def"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                            race=card_data["data"][0]["race"],
+                            attribute=card_data["data"][0]["attribute"] if card_type not in ["Spell Card", "Trap Card"] else None,
+                            effect=card_data["data"][0]["desc"] if "desc" in card_data["data"][0] else None,
+                            ygoprodeck_url=card_data["data"][0]["ygoprodeck_url"],
+                            deck_type=deck_type,
+                            img_root_window=self.cards_list_frame
+                            )
+                self.app.card_objects[deck_type].append(card) # Add the card to the card_objects list
+                self.aplace_cards_in_list() # Place the cards in the list
+
     def search_cards(self) -> dict:
         """
         Searches for a cards based on the user's input and displays it on the card view tab.
@@ -825,9 +928,29 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         
         search_data = {target: locals()[target] for target in search_targets} # Create a dictionary with the search targets and their values
 
-        raise NotImplementedError("Search function is not implemented yet.") # Raise an error to indicate that the function is not implemented yet
+        response_json = self.api_handler.request_card_data(search_data=search_data) # Search for the card based on the user's input
+        print(response_json) # Print the response to the console
 
-    def on_close(self) -> None: # TODO update to proper implementation
+    def discard_current_sheet(self) -> None:
+        """
+        Discards the current sheet and returns to the main menu.
+        """
+        
+        self.app.card_objects = {"main": [], "extra": [], "side": []} # Clear the card objects
+
+        self.tabs.pack_forget() # Hide the tab view widget
+        self.menu_bar.pack_forget()  # Hide the menu bar
+        self.canvas.delete("all") # Clear the canvas
+        [widget.grid_forget() for widget in self.cards_list_frame.winfo_children()] # Clear the cards_list_frame of any possible card labels
+
+        # Clear the card details frame and its sub frames
+        [widget.pack_forget() for widget in self.cards_details_frame.winfo_children()]  # Clear the card details frame
+        [widget.pack_forget() for widget in self.cards_tab_attrib_race_subtype_frame.winfo_children()]  # Clear the attribute  
+        [widget.pack_forget() for widget in self.cards_tab_atk_def_level_frame.winfo_children()]  # Clear the atk, def and level/rank sub frame
+
+        self.app.show_main_menu()
+
+    def on_close(self) -> None:
         """
         Called when the window is closed.
         """

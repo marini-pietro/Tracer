@@ -30,7 +30,7 @@ except ImportError:
 import config
 from utils import clear_cache_button_logic, set_config_variable # Import the necessary functions from utils.py
 import ctypes
-ctypes.windll.shcore.SetProcessDpiAwareness(1) # Fix blurry text on Windows TODO look into this
+ctypes.windll.shcore.SetProcessDpiAwareness(2) # Set DPI awareness to per-monitor DPI aware
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(config.APP_ID) # Set the app id for Windows (necessary for the icon to show up in the taskbar)
 del ctypes
 from CTkColorPicker.ctk_color_picker_widget import CTkColorPicker
@@ -140,7 +140,12 @@ class App(CTk):
         # Bind events
         self.settings_button.bind("<Button-1>", lambda _: (self.settings_button.unbind("<Button-1>"), self.show_settings_window(event=_))) # Bind the settings button to the function to show the settings window
 
-        # Pack the widgets
+        self.show_main_menu()
+
+    def show_main_menu(self):
+        """
+        Initializes and shows the main menu widgets.
+        """
         self.main_logo_label.place(relx=0.5, rely=0.4, anchor="center") # Place the main logo label
         self.new_sheet_button.place(relx=0.3, rely=0.8, anchor="center", y=0)
         self.import_sheet_button.place(relx=0.5, rely=0.8, anchor="center", y=0)
@@ -332,15 +337,15 @@ class App(CTk):
         else:
             self.sheet_handler.cards_empty_label.pack(pady=15, padx=15) # Show the empty label if the user did not import ydk
 
-        # Destroy the widgets in the new sheet window
-        [child.destroy() for child in new_frame.winfo_children()] # Destroy all the widgets in the window
-        new_frame.destroy() # Destroy the frame
-        self.settings_button.destroy()
+        # Un-place the widgets in the new sheet window
+        [child.place_forget() for child in new_frame.winfo_children()] # Forget all the widgets in the window
+        new_frame.place_forget() # Forget the frame
+        self.settings_button.place_forget()
 
-        self.main_logo_label.destroy()
-        self.new_sheet_button.destroy()
-        self.import_sheet_button.destroy()
-        self.clear_cache_button.destroy()
+        self.main_logo_label.place_forget()
+        self.new_sheet_button.place_forget()
+        self.import_sheet_button.place_forget()
+        self.clear_cache_button.place_forget()
 
         # Show the canvas window
         self.sheet_handler.show() # Show the canvas window 
@@ -667,7 +672,6 @@ class App(CTk):
                                                             email_window.destroy(),
                                                             set_config_variable(variable_name="email_address", value=email_entry.get()) if remember_email else None))
                                            
-
         # Send and enter password button
         send_button = CTkButton(master=email_window,
                                     text="Send and enter password",
@@ -723,11 +727,11 @@ class App(CTk):
         elif mode == "google-auth":
             message = "The authentication process might not be available because of google free tier API limits.\nIf so, please try again later or submit the bug report as an issue on github."
         message_box: CTkMessagebox = CTkMessagebox(master=self, 
-                                                            title="Warning",
-                                                            message=message,
-                                                            icon="warning", 
-                                                            options=["Close"],
-                                                            justify="center")
+                                                   title="Warning",
+                                                   message=message,
+                                                   icon="warning", 
+                                                   options=["Close"],
+                                                   justify="center")
         
         if message_box.get() == "Close": 
             message_box.destroy()
@@ -756,6 +760,5 @@ class App(CTk):
 if __name__ == "__main__":
     app = App()
     app.ydk_parser.set_app_reference(app) # Set the app reference in the ydk parser
-    app.ydk_parser.set_sheet_handler_reference(app.sheet_handler) # Set the sheet handler reference in the ydk parser
     app.sheet_handler.set_app_reference(app) # Set the app reference in the sheet handler
     app.mainloop()

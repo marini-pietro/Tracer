@@ -68,7 +68,7 @@ class YDKParser:
                         card_data = json.load(json_file)
                     json_file.close()
 
-                if card_data == {'error': 'No card matching your query was found in the database. Please see https://db.ygoprodeck.com/api-guide/ for syntax usage.'}:
+                if card_data == "Error": # If the card data is not found, log an error and continue to the next card
                     self.log_handler.log(type="ERROR", message=f"Card with id {line} not found in the database.")
                     continue
 
@@ -95,8 +95,9 @@ class YDKParser:
                              attribute=card_data["data"][0]["attribute"] if type not in ["Spell Card", "Trap Card"] else None,
                              effect=card_data["data"][0]["desc"] if "desc" in card_data["data"][0] else None,
                              deck_type=position,
-                             img_root_window=self.sheet_handler.cards_list_frame)
-                    )
+                             ygoprodeck_url=card_data["data"][0]["ygoprodeck_url"],
+                             img_root_window=self.app.sheet_handler.cards_list_frame)
+                            )
 
                 if has_api_been_called: time.sleep(0.05) # sleep for 50 milliseconds to limit to 20 requests per second (API limit)
                 # (with other operations in the loop this could not be necessary but keeping is necessary to avoid possible bans from the API)
@@ -250,17 +251,3 @@ class YDKParser:
         """
 
         self.app = app
-    
-    def set_sheet_handler_reference(self, sheet_handler):
-        """
-        Sets the reference to the sheet handler.
-
-        params:
-            sheet_handler: SheetHandler The reference to the sheet handler.
-        raises:
-            None
-        returns:
-            None
-        """
-
-        self.sheet_handler = sheet_handler

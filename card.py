@@ -25,10 +25,12 @@ class Card():
                  deck_type: str,
                  type: str,
                  linkval: str,
+                 ygoprodeck_url: str,
                  img_root_window):
 
         # Set the attributes
         self.id = id
+        self.ygoprodeck_url = ygoprodeck_url
         self.deck_type = deck_type
         self.type = type
         self.linkval=linkval # The link value of the card (only for link monsters) (if the card is not a link monster, it will be None)
