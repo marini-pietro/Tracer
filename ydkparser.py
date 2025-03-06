@@ -44,13 +44,12 @@ class YDKParser:
             None
         """        
 
+        position: str = "main" # The position of the card in the ydk file (main, extra, side)
+
         with open(ydk_file, "r") as file:
             for line in file:
                 line = line[:-1] # remove the newline character at the end of the line
-                if line == "#main":
-                    position = "main"
-                    continue
-                elif line == "#extra":
+                if line == "#extra":
                     position = "extra"
                     continue
                 elif line == "!side":
@@ -68,6 +67,10 @@ class YDKParser:
                     with open(os.path.join("data", "card_data", f"{line}.json"), "r") as json_file:
                         card_data = json.load(json_file)
                     json_file.close()
+
+                if card_data == {'error': 'No card matching your query was found in the database. Please see https://db.ygoprodeck.com/api-guide/ for syntax usage.'}:
+                    self.log_handler.log(type="ERROR", message=f"Card with id {line} not found in the database.")
+                    continue
 
                 self.card_data_output.append(card_data) # add the card data to the list of card data
                 self.card_imgs_urls.append(

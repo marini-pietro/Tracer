@@ -98,7 +98,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                                                           corner_radius=25)
         
         self.cards_empty_label = CTk.CTkLabel(self.cards_list_frame, 
-                                              text="No cards in the list.\nPress \"Import from YDK\" button or go to \"Cards search\" tab to add cards.", 
+                                              text="No cards in list.\nPress \"Import from YDK\" button under \"Actions\" menu button to add cards.", 
                                               font=("Helvetica", 16))
         
         self.cards_tab_extradeck_label = CTk.CTkLabel(self.cards_list_frame,
