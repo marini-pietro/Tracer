@@ -76,9 +76,9 @@ All contributions regardless of the nature or amount of changes will be document
 
 ## Copyright Information  
 
-The literal and graphical information presented in this app about Yu-Gi-Oh!, including card images, the attribute, level/rank and type symbols, and card text, is copyright 4K Media Inc, a subsidiary of Konami Digital Entertainment, Inc.
-This app is not produced by, endorsed by, supported by, or affiliated with 4k Media or Konami Digital Entertainment.
-This app is meant as a free to use tool to make creating combo sheets easier, there is no profit incentive and there will never be.
+The literal and graphical information presented in this app about Yu-Gi-Oh!, including card images, the attribute, level/rank and type symbols, and card text, is copyright 4K Media Inc, a subsidiary of Konami Digital Entertainment, Inc.  
+This app is not produced by, endorsed by, supported by, or affiliated with 4k Media or Konami Digital Entertainment.  
+This app is only meant as a free to use tool to make creating combo sheets easier, other than donation there is no way for the author snd contributors to profit and there will never be.
 
 ## Contact
 
