@@ -74,6 +74,12 @@ All contributions regardless of the nature or amount of changes will be document
 - [Cross icon](https://www.iconfinder.com/icons/9104213/close_cross_remove_delete_icon).
 - [Swap icon](https://www.iconfinder.com/icons/9035025/swap_vertical_icon).
 
+## Copyright Information  
+
+The literal and graphical information presented in this app about Yu-Gi-Oh!, including card images, the attribute, level/rank and type symbols, and card text, is copyright 4K Media Inc, a subsidiary of Konami Digital Entertainment, Inc.
+This app is not produced by, endorsed by, supported by, or affiliated with 4k Media or Konami Digital Entertainment.
+This app is meant as a free to use tool to make creating combo sheets easier, there is no profit incentive and there will never be.
+
 ## Contact
 
 For any questions or suggestions, please open a github issue with the tag Question or Suggestion, I will get to responding as soon as possible.
