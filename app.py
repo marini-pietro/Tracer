@@ -204,6 +204,20 @@ class App(CTk):
                                       rgb_entries=True)
         
         # Create entry for canvas color
+        # | Define the validation function TODO fix this
+        def validate_color_entry(action, value_if_allowed, text, validation_type, trigger_type, widget_name):
+            if action == '1':  # Insert
+                if text.isalpha():
+                    widget = self.nametowidget(widget_name)
+                    widget.insert('insert', text.upper())
+                    return False
+            elif action == '0' and value_if_allowed == "":  # Delete
+                return False
+            return True
+
+        #  | Register the validation function
+        vcmd = (self.register(validate_color_entry), '%d', '%P', '%S', '%v', '%V', '%W')
+
         canvas_color_frame = CTkFrame(new_frame)
         canvas_color_label = CTkLabel(canvas_color_frame, 
                                           text="Enter canvas color:")
@@ -213,7 +227,8 @@ class App(CTk):
                                           font=("Helvetica", 14), 
                                           textvariable=StringVar(value=config.DEFAULT_COLORS["CANVAS"]), 
                                           justify="center",
-                                          corner_radius=10)
+                                          corner_radius=10,
+                                          validatecommand=vcmd)
         canvas_entry_button = CTkButton(master=canvas_color_frame,
                                             text="Get from picker", 
                                             width=100,
@@ -237,7 +252,8 @@ class App(CTk):
                                          font=("Helvetica", 14), 
                                          textvariable=StringVar(value=config.DEFAULT_COLORS["ARROW"]), 
                                          justify="center",
-                                         corner_radius=10)
+                                         corner_radius=10,
+                                         validatecommand=vcmd)
         arrow_color_entry_button = CTkButton(master=arrow_color_frame,
                                                  text="Get from picker", 
                                                  width=100,
@@ -284,6 +300,15 @@ class App(CTk):
             arrow_color_entry.configure(textvariable=StringVar(value=canvas_color_entry.get()))
             canvas_color_entry.configure(textvariable=StringVar(value=arrow_color))
         swap_colors_button.bind("<Button-1>", swap_colors)
+
+        def submit_button_state_logic(event=None) -> None:
+            if (arrow_color_entry.get() != canvas_color_entry.get()) and (len(arrow_color_entry.get()) == 7 and len(canvas_color_entry.get()) == 7):
+                submit_button.configure(state="disabled")
+            else:
+                submit_button.configure(state="normal")
+
+        arrow_color_entry.bind("<KeyRelease>", submit_button_state_logic)
+        canvas_color_entry.bind("<KeyRelease>", submit_button_state_logic)
 
         # Pack the widgets
         new_frame.place(relx=0.5, rely=0.5, anchor="center") # Pack the subwindow
