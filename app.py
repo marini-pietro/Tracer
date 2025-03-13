@@ -365,7 +365,7 @@ class App(CTk):
         self.log_handler.log(type="INFO", message=f"Created new sheet with name: {self.sheet_handler.sheet_name}.") # Log the creation of the new sheet
 
         self.sheet_handler.set_canvas_color(color=canvas_color) # Set the canvas color
-        self.sheet_handler.set_arrow_color(color=arrow_color)
+        self.sheet_handler.set_arrow_color(color=arrow_color) # Set the arrow color
 
         # Handle ydk import if user selected to import ydk
         if import_ydk: # If the ydk import switch is on
@@ -439,7 +439,7 @@ class App(CTk):
                                                progress_color="#4a4d50",
                                                onvalue="dark",
                                                offvalue="light",
-                                               command= lambda: set_config_variable(variable_name="APPEARENCE_MODE", value="dark" if appearance_mode_switch.get() == "dark" else "light")) # Create the appearance mode switch
+                                               command= lambda: set_config_variable(variable_name="APPEARENCE_MODE", value="\"dark\"" if appearance_mode_switch.get() == "dark" else "\"light\"")) # Create the appearance mode switch
         # Set the switch to the current appearance mode
         if config.APPEARENCE_MODE == "dark": appearance_mode_switch.select() 
         else: appearance_mode_switch.deselect()
@@ -706,7 +706,7 @@ class App(CTk):
                                                                                                body=body_entry.get("1.0", "end-1c"),
                                                                                                mode="google-auth"),
                                                             email_window.destroy(),
-                                                            set_config_variable(variable_name="email_address", value=email_entry.get()) if remember_email else None))
+                                                            set_config_variable(variable_name="email_address", value="\""+ email_entry.get()+"\"") if remember_email else None))
                                            
         # Send and enter password button
         send_button = CTkButton(master=email_window,
@@ -723,7 +723,7 @@ class App(CTk):
                                                                                          body=body_entry.get(), 
                                                                                          mode="config-credentials"),
                                                       email_window.destroy(),
-                                                      set_config_variable(variable_name="email_address", value=email_entry.get()) if remember_email else None))
+                                                      set_config_variable(variable_name="email_address", value="\""+email_entry.get()+"\"") if remember_email else None))
 
         # Pack the widgets
         email_label.pack(pady=(10, 5), anchor="center", expand=True)

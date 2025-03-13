@@ -116,7 +116,7 @@ class EmailHandler:
 
         def submit_password():
             password = password_entry.get() # Get the password from the entry
-            if remember_password_var.get(): set_config_variable("email_password", password) # Save the password if the user wants to
+            if remember_password_var.get(): set_config_variable(variable_name="email_password", value="\""+password+"\"") # Save the password if the user wants to
             password_window.destroy() # Close the window
             return password
 
@@ -148,7 +148,7 @@ class EmailHandler:
         Removes the password from the config file.
         """
 
-        set_config_variable(variable_name="email_password", value="")
+        set_config_variable(variable_name="email_password", value="\"\"")
 
     def close_server(self):
         self.server.close()

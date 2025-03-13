@@ -38,6 +38,7 @@ class Card():
         self.name = name # The name of the card
         self.attribute = attribute # The attribute of the card (e.g. "Fire", "Water", "Earth", "Wind", "Light", "Dark", "Divine") (checking if the card is a monster has to be handled externally to avoid needing to pas all the json data which would uselessly increasing the memory usage)
         self.race = race # The sub-type of the card (e.g. "Warrior", "Spellcaster", "Equip", "Continuos", etc.)
+        # TODO change the line below so the last dot character is not replaced
         self.effect = effect.replace(".", "\n") # The effect of the card (replace dots or carriage returns with new lines to form a paragraph from a single line) 
         # (the replace function for \r is there because in some old extra deck cards there is \r\n instead of just \n)
         
