@@ -364,9 +364,6 @@ class App(CTk):
 
         self.log_handler.log(type="INFO", message=f"Created new sheet with name: {self.sheet_handler.sheet_name}.") # Log the creation of the new sheet
 
-        self.sheet_handler.set_canvas_color(color=canvas_color) # Set the canvas color
-        self.sheet_handler.set_arrow_color(color=arrow_color) # Set the arrow color
-
         # Handle ydk import if user selected to import ydk
         if import_ydk: # If the ydk import switch is on
             self.sheet_handler.import_ydk() # Import the ydk file
@@ -385,6 +382,10 @@ class App(CTk):
 
         # Show the canvas window
         self.sheet_handler.show() # Show the canvas window 
+
+        # Set the colors (has to be done after show method because that method initializes the canvas)
+        self.sheet_handler.set_canvas_color(color=canvas_color) # Set the canvas color
+        self.sheet_handler.set_arrow_color(color=arrow_color) # Set the arrow color
 
     def import_sheet_dialogue(self) -> None:
         """

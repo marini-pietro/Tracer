@@ -1,5 +1,7 @@
 try:
-    import os, pygame
+    import os
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1" # Hide welcome prompt in sdout
+    import pygame
     import customtkinter as CTk
     from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
     from CTkMessagebox import CTkMessagebox
@@ -10,6 +12,7 @@ try:
 except ImportError:
     import os
     os.system("pip install -r requirements.txt")
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1" # Hide welcome prompt in sdout
     import pygame
     import customtkinter as CTk
     from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
@@ -69,7 +72,7 @@ class SheetHandler:
         cards_tab = self.tabs.add("Cards")
         card_search_tab = self.tabs.add("Card search")
         self.tabs.delete("Card search") # Remove the card search tab for now TODO implement card search functionality in future version
-
+        
         # Initialize variables
         self.scale: float = 1.0 # The scale of the canvas
         self.log_handler = log_handler 
@@ -80,19 +83,24 @@ class SheetHandler:
 
         # CANVAS TAB
         # | Init widgets
-        self.canvas_frame = CTk.CTkFrame(master=canvas_tab,
-                                         corner_radius=25,
-                                         fg_color="transparent",
-                                         bg_color="transparent")
+        # self.canvas_frame = CTk.CTkFrame(master=canvas_tab,
+        #                                  corner_radius=25,
+        #                                  fg_color="transparent",
+        #                                  bg_color="transparent")
+        self.canvas_frame = tk.Frame(master=canvas_tab, bg="red")
         
-        # | Init necessary environment variables
+        # | Place the widgets
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True) # Pack the frame to fill the tab
+        self.root_window.update() # Ensure the frame is fully initialized
+
+        # | Init necessary environment variables to embed pygame in canvas_frame
         os.environ['SDL_WINDOWID'] = str(self.canvas_frame.winfo_id())
         if os.name == "nt": # If the OS is Windows
             os.environ['SDL_VIDEODRIVER'] = 'windib'
 
-        pygame.display.init() # Initialize pygame's display module
-        self.canvas = pygame.display.set_mode(size=(self.canvas_frame.winfo_width(), self.canvas_frame.winfo_height())) # Create a screen to draw on
-        
+        # Canvas init done in show method because self.tabs has to be packed before the canvas can be initialized (TODO research on how this could be done better)
+        self.canvas = None # The canvas object
+
         # | Set the default color of the arrows
         self.arrow_color: str = arrow_color
 
@@ -105,9 +113,6 @@ class SheetHandler:
         self.canvas_frame.bind("<B3-Motion>", self.on_right_mouse_drag)
 
         self.canvas_frame.bind("<MouseWheel>", self.on_mouse_wheel)
-
-        # | Place the widgets
-        self.canvas_frame.pack(fill=tk.BOTH, expand=True) 
 
         # CARDS TAB
         # | Init widgets
@@ -481,51 +486,26 @@ class SheetHandler:
         Marks the position of the canvas when the left mouse button is pressed.
         """
         
-        # Check if the user has pressed on an item with the tag "image"
-        item = self.canvas.find_withtag("current") # Get the item that the user has clicked on
-        if "image" not in self.canvas.gettags(item): # Check if the item has the tag "image"
-            return
-
-        # Highlight the image
-        x1, y1, x2, y2 = self.canvas.bbox(item[0])
-        self.drag_data["highlighter"] = self.canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=5, tags="highlighter")
-
-        # Store the item and its initial position
-        self.drag_data["item"] = item
-        self.drag_data["x"] = event.x
-        self.drag_data["y"] = event.y
+        pass
 
     def on_left_mouse_drag(self, event):
         """
         Moves the highlighted image when the left mouse button is dragged.
         """
-        if self.drag_data["item"]:
-            dx = event.x - self.drag_data["x"]
-            dy = event.y - self.drag_data["y"]
-            self.canvas.move(self.drag_data["item"], dx, dy)
-            self.canvas.move(self.drag_data["highlighter"], dx, dy)
-            self.drag_data["x"] = event.x
-            self.drag_data["y"] = event.y
+        pass
 
     def on_left_button_release(self, event):
         """
         Resets the drag data when the left mouse button is released.
         """
-        self.drag_data["item"] = None
-        self.drag_data["x"] = 0
-        self.drag_data["y"] = 0
+        pass
 
     def on_mouse_wheel(self, event):
         """
         Zooms in or out of the canvas when the mouse wheel is scrolled.
         """
 
-        scale_factor = 1.1 if event.delta > 0 else 0.9
-        self.scale *= scale_factor
-        self.canvas.scale("all", event.x, event.y, scale_factor, scale_factor)
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self.canvas.xview_scroll(int(-1 * event.delta / 120), "units")
-        self.canvas.yview_scroll(int(-1 * event.delta / 120), "units")
+        pass
 
     def on_right_button_press(self, event):
         """
@@ -539,15 +519,16 @@ class SheetHandler:
             None
         """
 
-        # Create a menus
-        menu = tk.Menu(self.canvas, tearoff=0)
+        pass
+        # # Create a menus
+        # menu = tk.Menu(self.canvas, tearoff=0)
 
-        # Add commands to the menus
-        menu.add_command(label="Add arrow", command = lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
-        menu.add_command(label="Add text", command = lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
+        # # Add commands to the menus
+        # menu.add_command(label="Add arrow", command = lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
+        # menu.add_command(label="Add text", command = lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
 
-        # Show the menu at the mouse position
-        menu.tk_popup(event.x_root, event.y_root)
+        # # Show the menu at the mouse position
+        # menu.tk_popup(event.x_root, event.y_root)
 
     def add_image(self, image_path, scale, x, y):
         """
@@ -591,8 +572,7 @@ class SheetHandler:
         """
         Drags the canvas when the right mouse button is pressed.
         """
-        print("Right mouse drag")
-        self.canvas.scan_dragto(event.x, event.y, gain=1)
+        pass
 
     def focus_on_card(self, card) -> None:
         """
@@ -785,6 +765,12 @@ class SheetHandler:
         self.menu_bar.pack(anchor="n", fill="x") # Pack the menu bar to the top of the window
 
         self.tabs.pack(fill=tk.BOTH, expand=True)
+        self.root_window.update() # Force layout update to ensure dimensions are calculated
+
+        # Initialize the canvas (has to be done after the canvas frame is packed to get the correct width and height)
+        pygame.display.init() # Initialize pygame's display module
+        self.canvas = pygame.display.set_mode(size=(self.canvas_frame.winfo_width(), self.canvas_frame.winfo_height())) # Initialize the pygame canvas with the frame's dimensions
+        self.update_canvas() # Start updating the canvas to show the cards
 
     def place_cards_in_list(self) -> None:
         """
@@ -959,10 +945,25 @@ class SheetHandler:
 
         self.app.show_main_menu()
 
+    def update_canvas(self) -> None:
+        """
+        Updates the canvas.
+        """
+
+        current_tab = self.tabs.get()  # Get the currently selected tab
+        if current_tab == "Canvas": # If the current tab is the canvas tab update the canvas
+            self.canvas.fill(pygame.Color(config.DEFAULT_COLORS["CANVAS"])) # Set the color of the canvas
+            pygame.display.update() # Update the display
+
+        self.root_window.update() # Update the root window
+        self.root_window.after(16, self.update_canvas) # Call the update_canvas method again after 16 milliseconds (60 FPS)
+
     def on_close(self) -> None:
         """
         Called when the window is closed.
         """
+
+        pygame.display.quit() # Quit the pygame display module
         for tab in self.tabs.winfo_children():
             for child in tab.winfo_children():
                 child.destroy()
