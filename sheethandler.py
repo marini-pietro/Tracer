@@ -79,15 +79,12 @@ class SheetHandler:
         self.ydk_parser = ydk_parser
         self.api_handler = api_handler
         self.app = None # Reference to the main class (cannot be set here and has to be passed after main class initialization to avoid circular imports)
-        self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0} # Data used for dragging items on the canvas
+        self.canvas_surfaces_rects: pygame.Rect = [] # Class used to hold all the rects inside of the canvas
 
         # CANVAS TAB
         # | Init widgets
-        # self.canvas_frame = CTk.CTkFrame(master=canvas_tab,
-        #                                  corner_radius=25,
-        #                                  fg_color="transparent",
-        #                                  bg_color="transparent")
-        self.canvas_frame = tk.Frame(master=canvas_tab, bg="red")
+        self.canvas_frame = tk.Frame(master=canvas_tab, 
+                                     bg="black")
         
         # | Place the widgets
         self.canvas_frame.pack(fill=tk.BOTH, expand=True) # Pack the frame to fill the tab
@@ -519,16 +516,15 @@ class SheetHandler:
             None
         """
 
-        pass
-        # # Create a menus
-        # menu = tk.Menu(self.canvas, tearoff=0)
+        # Create a menus
+        menu = tk.Menu(master=self.canvas_frame, tearoff=0)
 
-        # # Add commands to the menus
-        # menu.add_command(label="Add arrow", command = lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
-        # menu.add_command(label="Add text", command = lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
+        # Add commands to the menus
+        menu.add_command(label="Add arrow", command = lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
+        menu.add_command(label="Add text", command = lambda: self.add_text(event.x, event.y, "Hello world!"))
 
-        # # Show the menu at the mouse position
-        # menu.tk_popup(event.x_root, event.y_root)
+        # Show the menu at the mouse position
+        menu.tk_popup(event.x_root, event.y_root)
 
     def add_image(self, image_path, scale, x, y):
         """
@@ -545,11 +541,10 @@ class SheetHandler:
         raises: None
         """
 
-        image = Image.open(image_path)
-        image = image.resize((int(image.width * scale), int(image.height * scale)), Image.LANCZOS)
-        image = ImageTk.PhotoImage(image)
-        self.card_images.append(image)  # Keep a reference to avoid garbage collection
-        self.canvas.create_image(x, y, image=image, anchor=tk.CENTER, tags="image")
+        image = pygame.image.load(image_path)  # Load the image using pygame
+        image = pygame.transform.scale(image, (int(image.get_width() * scale), int(image.get_height() * scale)))  # Scale the image
+        self.canvas_surfaces_rects.append(image.get_rect()) # Add to surface rects list
+        self.canvas.blit(image, (x, y))  # Draw the image on the canvas at the specified position
 
     def add_arrow(self, x1, y1, x2, y2):
         """
@@ -567,6 +562,12 @@ class SheetHandler:
         """
 
         self.canvas.create_line(x1, y1, x2, y2, arrow=tk.LAST, fill=self.arrow_color)
+
+    def add_text(self, x, y, text):
+
+        font = pygame.font.Font(None, 36)  # Create a font object with default font and size 36
+        text_surface = font.render(text, True, config.DEFAULT_COLORS["ARROW"])  # Render the text onto a surface
+        self.canvas.blit(text_surface, (x, y))  # Blit the text surface onto the canvas at the specified position
 
     def on_right_mouse_drag(self, event):
         """
@@ -769,8 +770,10 @@ class SheetHandler:
 
         # Initialize the canvas (has to be done after the canvas frame is packed to get the correct width and height)
         pygame.display.init() # Initialize pygame's display module
+        pygame.font.init() # Initialize pygame's font module
         self.canvas = pygame.display.set_mode(size=(self.canvas_frame.winfo_width(), self.canvas_frame.winfo_height())) # Initialize the pygame canvas with the frame's dimensions
-        self.update_canvas() # Start updating the canvas to show the cards
+        self.canvas.fill(pygame.Color(config.DEFAULT_COLORS["CANVAS"])) # Set the color of the canvas
+        self.update_canvas() # Begin updating canvas
 
     def place_cards_in_list(self) -> None:
         """
