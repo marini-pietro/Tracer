@@ -1,5 +1,7 @@
 try:
     import os
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1" # Hide welcome prompt in sdout
+    import pygame
     import customtkinter as CTk
     from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
     from CTkMessagebox import CTkMessagebox
@@ -10,6 +12,8 @@ try:
 except ImportError:
     import os
     os.system("pip install -r requirements.txt")
+    os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1" # Hide welcome prompt in sdout
+    import pygame
     import customtkinter as CTk
     from CTkMenuBar import CTkMenuBar, CustomDropdownMenu
     from CTkMessagebox import CTkMessagebox
@@ -21,7 +25,7 @@ import config
 from datetime import datetime
 from card import Card
 
-class SheetHandler: #TODO add possibility to discard current canvas and return to main menu
+class SheetHandler:
     def __init__(self, 
                  log_handler,
                  api_handler,
@@ -68,37 +72,44 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         cards_tab = self.tabs.add("Cards")
         card_search_tab = self.tabs.add("Card search")
         self.tabs.delete("Card search") # Remove the card search tab for now TODO implement card search functionality in future version
-
+        
         # Initialize variables
         self.scale: float = 1.0 # The scale of the canvas
         self.log_handler = log_handler 
         self.ydk_parser = ydk_parser
         self.api_handler = api_handler
         self.app = None # Reference to the main class (cannot be set here and has to be passed after main class initialization to avoid circular imports)
-        self.drag_data = {"item": None, "highlighter": None, "x": 0, "y": 0} # Data used for dragging items on the canvas
+        self.canvas_surfaces_rects: pygame.Rect = [] # Class used to hold all the rects inside of the canvas
 
         # CANVAS TAB
         # | Init widgets
-        self.canvas: CTk.CTkCanvas = CTk.CTkCanvas(master=canvas_tab, 
-                                                   bg=canvas_color)
-
-        # TODO aggiungi intestazione a canvas con bottoni file, edit, ecc.. che poi aprono un menu a tendina con le varie opzioni
+        self.canvas_frame = tk.Frame(master=canvas_tab, 
+                                     bg="black")
         
+        # | Place the widgets
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True) # Pack the frame to fill the tab
+        self.root_window.update() # Ensure the frame is fully initialized
+
+        # | Init necessary environment variables to embed pygame in canvas_frame
+        os.environ['SDL_WINDOWID'] = str(self.canvas_frame.winfo_id())
+        if os.name == "nt": # If the OS is Windows
+            os.environ['SDL_VIDEODRIVER'] = 'windib'
+
+        # Canvas init done in show method because self.tabs has to be packed before the canvas can be initialized (TODO research on how this could be done better)
+        self.canvas = None # The canvas object
+
         # | Set the default color of the arrows
         self.arrow_color: str = arrow_color
 
         # | Bind events
-        self.canvas.bind("<ButtonPress-1>", self.on_left_button_press)
-        self.canvas.bind("<ButtonRelease-1>", self.on_left_button_release)
-        self.canvas.bind("<ButtonPress-3>", self.on_right_button_press)
+        self.canvas_frame.bind("<ButtonPress-1>", self.on_left_button_press)
+        self.canvas_frame.bind("<ButtonRelease-1>", self.on_left_button_release)
+        self.canvas_frame.bind("<ButtonPress-3>", self.on_right_button_press)
 
-        self.canvas.bind("<B1-Motion>", self.on_left_mouse_drag)
-        self.canvas.bind("<B3-Motion>", self.on_right_mouse_drag)
+        self.canvas_frame.bind("<B1-Motion>", self.on_left_mouse_drag)
+        self.canvas_frame.bind("<B3-Motion>", self.on_right_mouse_drag)
 
-        self.canvas.bind("<MouseWheel>", self.on_mouse_wheel)
-
-        # | Place the widgets
-        self.canvas.pack(fill=tk.BOTH, expand=True) 
+        self.canvas_frame.bind("<MouseWheel>", self.on_mouse_wheel)
 
         # CARDS TAB
         # | Init widgets
@@ -158,6 +169,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
 
         self.card_label_clone = None
         self.card_effect_label = None
+        self.card_effect_long_label = None
         self.card_name_label = None
 
         # | Init necessary variables
@@ -471,51 +483,26 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         Marks the position of the canvas when the left mouse button is pressed.
         """
         
-        # Check if the user has pressed on an item with the tag "image"
-        item = self.canvas.find_withtag("current") # Get the item that the user has clicked on
-        if "image" not in self.canvas.gettags(item): # Check if the item has the tag "image"
-            return
-
-        # Highlight the image
-        x1, y1, x2, y2 = self.canvas.bbox(item[0])
-        self.drag_data["highlighter"] = self.canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=5, tags="highlighter")
-
-        # Store the item and its initial position
-        self.drag_data["item"] = item
-        self.drag_data["x"] = event.x
-        self.drag_data["y"] = event.y
+        pass
 
     def on_left_mouse_drag(self, event):
         """
         Moves the highlighted image when the left mouse button is dragged.
         """
-        if self.drag_data["item"]:
-            dx = event.x - self.drag_data["x"]
-            dy = event.y - self.drag_data["y"]
-            self.canvas.move(self.drag_data["item"], dx, dy)
-            self.canvas.move(self.drag_data["highlighter"], dx, dy)
-            self.drag_data["x"] = event.x
-            self.drag_data["y"] = event.y
+        pass
 
     def on_left_button_release(self, event):
         """
         Resets the drag data when the left mouse button is released.
         """
-        self.drag_data["item"] = None
-        self.drag_data["x"] = 0
-        self.drag_data["y"] = 0
+        pass
 
     def on_mouse_wheel(self, event):
         """
         Zooms in or out of the canvas when the mouse wheel is scrolled.
         """
 
-        scale_factor = 1.1 if event.delta > 0 else 0.9
-        self.scale *= scale_factor
-        self.canvas.scale("all", event.x, event.y, scale_factor, scale_factor)
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self.canvas.xview_scroll(int(-1 * event.delta / 120), "units")
-        self.canvas.yview_scroll(int(-1 * event.delta / 120), "units")
+        pass
 
     def on_right_button_press(self, event):
         """
@@ -530,11 +517,11 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         """
 
         # Create a menus
-        menu = tk.Menu(self.canvas, tearoff=0)
+        menu = tk.Menu(master=self.canvas_frame, tearoff=0)
 
         # Add commands to the menus
         menu.add_command(label="Add arrow", command = lambda: self.add_arrow(event.x, event.y, event.x + 50, event.y + 50))
-        menu.add_command(label="Add text", command = lambda: self.canvas.create_text(event.x, event.y, text="Hello, world!", font=("Helvetica", 16)))
+        menu.add_command(label="Add text", command = lambda: self.add_text(event.x, event.y, "Hello world!"))
 
         # Show the menu at the mouse position
         menu.tk_popup(event.x_root, event.y_root)
@@ -554,11 +541,10 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         raises: None
         """
 
-        image = Image.open(image_path)
-        image = image.resize((int(image.width * scale), int(image.height * scale)), Image.LANCZOS)
-        image = ImageTk.PhotoImage(image)
-        self.card_images.append(image)  # Keep a reference to avoid garbage collection
-        self.canvas.create_image(x, y, image=image, anchor=tk.CENTER, tags="image")
+        image = pygame.image.load(image_path)  # Load the image using pygame
+        image = pygame.transform.scale(image, (int(image.get_width() * scale), int(image.get_height() * scale)))  # Scale the image
+        self.canvas_surfaces_rects.append(image.get_rect()) # Add to surface rects list
+        self.canvas.blit(image, (x, y))  # Draw the image on the canvas at the specified position
 
     def add_arrow(self, x1, y1, x2, y2):
         """
@@ -577,12 +563,17 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
 
         self.canvas.create_line(x1, y1, x2, y2, arrow=tk.LAST, fill=self.arrow_color)
 
+    def add_text(self, x, y, text):
+
+        font = pygame.font.Font(None, 36)  # Create a font object with default font and size 36
+        text_surface = font.render(text, True, config.DEFAULT_COLORS["ARROW"])  # Render the text onto a surface
+        self.canvas.blit(text_surface, (x, y))  # Blit the text surface onto the canvas at the specified position
+
     def on_right_mouse_drag(self, event):
         """
         Drags the canvas when the right mouse button is pressed.
         """
-        print("Right mouse drag")
-        self.canvas.scan_dragto(event.x, event.y, gain=1)
+        pass
 
     def focus_on_card(self, card) -> None:
         """
@@ -602,7 +593,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         # | Initialize necessary variables
         vert_padding = 15  # Vertical padding between widgets (not in between stats frame and attribute/race/subtype frame)
         is_card_monster: bool = card.type not in ["Trap Card", "Spell Card"]  # Check if the card is a monster card
-        is_card_effect_long: bool = len(card.effect) > 460  # Check if the card effect is considered long TODO figure out right threshold (changing pack padding values will change it)
+        is_card_effect_long: bool = len(card.effect) > 450  # Check if the card effect is considered long TODO figure out right threshold (changing pack padding values will change it)
         is_card_link_monster: bool = card.type == "Link Monster"  # Check if the card is a link monster
         card_label_present: bool = False  # Flag to check if the card label clone is present
         card_effect_label_present: bool = False  # Flag to check if the card effect label is present
@@ -616,7 +607,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                widget != self.card_name_label:
                 widget.pack_forget()
 
-            # Check if the widgets that can be reused are present (the flags are necessary so that if they are not updated the widgets are created)
+            # Check if the widgets that can be reused are present (the flags are necessary so that if they are set to False the widgets are created)
             if widget == self.card_label_clone: card_label_present = True
             elif widget == self.card_effect_label: card_effect_label_present = True
             elif widget == self.card_name_label: card_name_label_present = True
@@ -624,7 +615,9 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         [widget.pack_forget() for widget in self.cards_tab_attrib_race_subtype_frame.winfo_children()]  # Clear the attribute and race sub frame
         [widget.pack_forget() for widget in self.cards_tab_atk_def_level_frame.winfo_children()]  # Clear the atk, def and level/rank sub frame
         [widget.pack_forget() for widget in self.cards_tab_stats_frame.winfo_children()]  # Clear the stats frame (the one that contains self.cards_tab_attrib_race_subtype_frame and self.cards_tab_atk_def_level_frame)
+        self.card_effect_frame.pack_forget()  # Clear the card effect frame
         self.cards_tab_ygoprodeck_button.pack_forget()  # Clear the ygoprodeck button
+        self.cards_tab_ygoprodeck_button_long.pack_forget()  # Clear the ygoprodeck button
 
         # | Unbind events
         self.cards_tab_ygoprodeck_button.unbind("<Button-1>")  # Unbind the button to open the ygoprodeck page of the card
@@ -657,20 +650,16 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
                                                 font=("Helvetica", 20),
                                                 wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
 
-        #  | Create the text  (and the summoning requirements if the card is an extra deck monster) of the card
+        #  | Create the text (and the summoning requirements if the card is an extra deck monster) of the card
         if is_card_effect_long:
-            if self.card_effect_frame in self.cards_details_frame.winfo_children(): # Check if the card effect frame is already in the cards_details_frame
-                self.card_effect_label.configure(text=card.effect)
+            if self.card_effect_long_label in self.card_effect_frame.winfo_children():
+                self.card_effect_long_label.configure(text=card.effect)
             else:
-                if self.card_effect_label in self.card_effect_frame.winfo_children(): # Check if the card effect label is already in the cards_details_frame
-                    self.card_effect_label.configure(text=card.effect)
-                else:
-                    self.card_effect_label = CTk.CTkLabel(master=self.card_effect_frame,
-                                                        text=card.effect,
-                                                        font=("Helvetica", 16),
-                                                        wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
-                    self.card_effect_label.pack()
-                    self.cards_tab_ygoprodeck_button_long.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the ygoprodeck button
+                self.card_effect_long_label = CTk.CTkLabel(master=self.card_effect_frame,
+                                                           text=card.effect,
+                                                           font=("Helvetica", 16),
+                                                           wraplength=450) # Set the maximum width (the text will wrap around if it exceeds this width)
+                self.card_effect_long_label.pack(side=tk.TOP) # Pack the scrollable frame
         else:
             if card_effect_label_present: # Check if the card effect label is already in the cards_details_frame
                 self.card_effect_label.configure(text=card.effect)
@@ -725,11 +714,12 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         self.card_label_clone.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the card image
         self.cards_tab_stats_frame.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the stats frame
         self.card_name_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the card name
-        if not is_card_effect_long: self.card_effect_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # If the card effect is not long pack the label directly into self.cards_details_frame
-        else: self.card_effect_frame.pack(side=tk.TOP, pady=(vert_padding, 0)) # Else pack the scrollable frame
-        
-        #  | Pack the ygoprodeck button
-        if not is_card_effect_long: self.cards_tab_ygoprodeck_button.pack(side=tk.TOP, pady=(vert_padding, 0))
+        if not is_card_effect_long: 
+            self.card_effect_label.pack(side=tk.TOP, pady=(vert_padding, 0)) # If the card effect is not long pack the label directly into self.cards_details_frame
+            self.cards_tab_ygoprodeck_button.pack(side=tk.TOP, pady=(vert_padding, 0))
+        else: 
+            self.card_effect_frame.pack(side=tk.TOP, pady=(vert_padding, 0)) # Else pack the scrollable frame
+            self.cards_tab_ygoprodeck_button_long.pack(side=tk.TOP, pady=(vert_padding, 0)) # Pack the ygoprodeck button
 
     # I/O related functions
     def export_canvas_as_img(self, file_path): # TODO check if it works properly
@@ -776,6 +766,14 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         self.menu_bar.pack(anchor="n", fill="x") # Pack the menu bar to the top of the window
 
         self.tabs.pack(fill=tk.BOTH, expand=True)
+        self.root_window.update() # Force layout update to ensure dimensions are calculated
+
+        # Initialize the canvas (has to be done after the canvas frame is packed to get the correct width and height)
+        pygame.display.init() # Initialize pygame's display module
+        pygame.font.init() # Initialize pygame's font module
+        self.canvas = pygame.display.set_mode(size=(self.canvas_frame.winfo_width(), self.canvas_frame.winfo_height())) # Initialize the pygame canvas with the frame's dimensions
+        self.canvas.fill(pygame.Color(config.DEFAULT_COLORS["CANVAS"])) # Set the color of the canvas
+        self.update_canvas() # Begin updating canvas
 
     def place_cards_in_list(self) -> None:
         """
@@ -950,10 +948,25 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
 
         self.app.show_main_menu()
 
+    def update_canvas(self) -> None:
+        """
+        Updates the canvas.
+        """
+
+        current_tab = self.tabs.get()  # Get the currently selected tab
+        if current_tab == "Canvas": # If the current tab is the canvas tab update the canvas
+            self.canvas.fill(pygame.Color(config.DEFAULT_COLORS["CANVAS"])) # Set the color of the canvas
+            pygame.display.update() # Update the display
+
+        self.root_window.update() # Update the root window
+        self.root_window.after(16, self.update_canvas) # Call the update_canvas method again after 16 milliseconds (60 FPS)
+
     def on_close(self) -> None:
         """
         Called when the window is closed.
         """
+
+        pygame.display.quit() # Quit the pygame display module
         for tab in self.tabs.winfo_children():
             for child in tab.winfo_children():
                 child.destroy()
@@ -967,7 +980,7 @@ class SheetHandler: #TODO add possibility to discard current canvas and return t
         params: color: str - The color of the canvas.
         return: None
         """
-        self.canvas.configure(bg=color)
+        self.canvas.fill(pygame.Color(color)) # Set the color of the canvas
 
     def set_arrow_color(self, color: str):
         """
